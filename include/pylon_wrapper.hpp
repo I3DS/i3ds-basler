@@ -10,37 +10,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-#ifndef __I3DS_BASLER_HIGH_RES_INTERFACE_HPP
-#define __I3DS_BASLER_HIGH_RES_INTERFACE_HPP
-
-
-
-#include "i3ds/camera_sensor.hpp"
-#include "i3ds/periodic.hpp"
+#ifndef __PYLON_WRAPPER_HPP
+#define __PYLON_WRAPPER_HPP
 
 // Include files to use the PYLON API.
 #include <pylon/PylonIncludes.h>
-
 #include <pylon/gige/BaslerGigEInstantCamera.h>
 
 #include <thread>
 
-
-
-// Namespace for using pylon objects.
-//using namespace Pylon;
-
-
 // Does sampling operation, returns true if more samples are requested.
-typedef std::function<bool(unsigned char *image, unsigned long timestamp_us)> Operation;
+typedef std::function<bool(unsigned char* image, int width, int height)> Operation;
 
-
-class BaslerHighResInterface
+class PylonWrapper
 {
 public:
 
-  BaslerHighResInterface(std::string const & connectionString,  std::string const  &camera_name, bool free_running, Operation operation);
-  void initialiseCamera();
+  PylonWrapper(std::string camera_name, Operation operation);
+
   void stopSampling();
   void startSamplingLoop();
   void startSampling();
@@ -53,9 +40,8 @@ public:
 
   void connect();
 
-
-  void setGain (int64_t value);
-  int64_t getGain ();
+  void setGain(int64_t value);
+  int64_t getGain();
 
   int64_t getShutterTime();
   void setShutterTime(int64_t value);
@@ -63,25 +49,21 @@ public:
   void setRegionEnabled(bool regionEnabled);
   bool getRegionEnabled();
 
-
   void setTriggerInterval(int64_t);
   bool checkTriggerInterval(int64_t);
-
 
   int64_t getMaxShutterTime();
   void setMaxShutterTime(int64_t);
 
-
   void setRegion(PlanarRegion region);
   PlanarRegion getRegion();
 
-
-  bool getAutoExposureEnabled ();
-  void setAutoExposureEnabled (bool enabled);
+  bool getAutoExposureEnabled();
+  void setAutoExposureEnabled(bool enabled);
 
 private:
 
-  std::unique_ptr <Pylon::CBaslerGigEInstantCamera> camera;
+  std::unique_ptr<Pylon::CBaslerGigEInstantCamera> camera_;
 
   // Automagically call PylonInitialize and PylonTerminate to ensure the pylon runtime system
   // is initialized during the lifetime of this object.
@@ -89,20 +71,12 @@ private:
 
   std::thread threadSamplingLoop;
 
-  //const char *cameraName;
-  //std::unique_ptr<std::string> cameraName_;
- std::string cameraName_;
-
+  std::string cameraName_;
 
   // Sample operation.
+  std::string connection_id_;
 
-   std::unique_ptr<char> ConnectionID;
-   bool free_running_;
-   Operation operation_;
-
-   float sample_rate_in_Hz_;
-
-   typedef std::chrono::high_resolution_clock clock;
+  Operation operation_;
 };
 
 #endif
