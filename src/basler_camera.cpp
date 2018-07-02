@@ -16,6 +16,8 @@
 #include <boost/log/trivial.hpp>
 #include <boost/log/expressions.hpp>
 
+#include <cmath>
+
 namespace logging = boost::log;
 
 i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, NodeID node, Parameters param)
@@ -30,6 +32,8 @@ i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, NodeID node, Parameters p
   pattern_sequence_ = 0;
 
   camera_ = nullptr;
+
+  Pylon::PylonInitialize();
 }
 
 i3ds::BaslerCamera::~BaslerCamera()
@@ -41,21 +45,31 @@ i3ds::BaslerCamera::~BaslerCamera()
     }
 }
 
+SensorGain
+i3ds::BaslerCamera::raw_to_gain(int64_t raw) const
+{
+  // TODO: Camera specific for ACE acA2040-25gmNIR.
+  return 20.0 * log10((1.0 / 32.0) * raw);
+}
+
+int64_t
+i3ds::BaslerCamera::gain_to_raw(SensorGain gain) const
+{
+  // TODO: Camera specific for ACE acA2040-25gmNIR.
+  return (int64_t) 32.0 * pow(10, gain / 20.0);
+}
+
+
 ShutterTime
 i3ds::BaslerCamera::shutter() const
 {
-  // TODO: Confirm convertion.
-  int exposureTimeRaw = 1; //camera_->ExposureTimeRaw.GetValue();
-  float exposureTimeAbs = camera_->ExposureTimeAbs.GetValue();
-
-  return (ShutterTime)((exposureTimeAbs * exposureTimeRaw) + 0.5);
+  return (ShutterTime) camera_->ExposureTimeAbs.GetValue();
 }
 
 SensorGain
 i3ds::BaslerCamera::gain() const
 {
-  // TODO: Check need for convertion.
-  return camera_->GainRaw.GetValue();
+  return raw_to_gain(camera_->GainRaw.GetValue());
 }
 
 bool
@@ -75,7 +89,8 @@ i3ds::BaslerCamera::max_shutter() const
 SensorGain
 i3ds::BaslerCamera::max_gain() const
 {
-  return camera_->GainRaw.GetMax();
+  // TODO: Does this use another conversion?
+  return raw_to_gain(camera_->AutoGainRawUpperLimit.GetValue());
 }
 
 bool
@@ -120,19 +135,27 @@ i3ds::BaslerCamera::do_activate()
       info.SetUserDefinedName(param_.camera_name.c_str());
       info.SetDeviceClass(Pylon::CBaslerGigEInstantCamera::DeviceClass());
 
-      camera_ = (Pylon::CBaslerGigEInstantCamera*) Pylon::CTlFactory::GetInstance().CreateFirstDevice(info);
+      BOOST_LOG_TRIVIAL(info) << "Searching for camera named: " << param_.camera_name;
 
-      BOOST_LOG_TRIVIAL(info) << "Camera found:";
+      // TODO: Fix this convertion.
+      camera_ = new Pylon::CBaslerGigEInstantCamera(Pylon::CTlFactory::GetInstance().CreateFirstDevice(info));
 
-      //Print the model name of the camera.
+      BOOST_LOG_TRIVIAL(info) << "Camera found!";
+
+      // Print the model name of the camera.
       BOOST_LOG_TRIVIAL(info) << "Model name:    " << camera_->GetDeviceInfo().GetModelName();
       BOOST_LOG_TRIVIAL(info) << "Friendly name: " << camera_->GetDeviceInfo().GetFriendlyName();
       BOOST_LOG_TRIVIAL(info) << "Full name:     " << camera_->GetDeviceInfo().GetFullName();
       BOOST_LOG_TRIVIAL(info) << "SerialNumber:  " << camera_->GetDeviceInfo().GetSerialNumber();
 
+      // Open camera.
       camera_->Open();
 
-      //Switching format
+      // Set streaming options.
+      camera_->GevSCPSPacketSize.SetValue(param_.packet_size);
+      camera_->GevSCPD.SetValue(param_.packet_delay);
+
+      // Switching format
       camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono12);
 
       // Set default sampling to reasonable value.
@@ -143,6 +166,8 @@ i3ds::BaslerCamera::do_activate()
     }
   catch (GenICam::GenericException &e)
     {
+      BOOST_LOG_TRIVIAL(warning) << e.what();
+
       throw i3ds::CommandError(error_other, "Error connecting to camera");;
     }
 }
@@ -150,20 +175,35 @@ i3ds::BaslerCamera::do_activate()
 void
 i3ds::BaslerCamera::do_start()
 {
+  using namespace Basler_GigECamera;
+
   BOOST_LOG_TRIVIAL(info) << "do_start()";
 
   if (param_.free_running)
     {
-      camera_->TriggerMode.SetValue(Basler_GigECamera::TriggerModeEnums::TriggerMode_Off);
+      double fps = 1.0e6 / period();
+      double fps_min = camera_->AcquisitionFrameRateAbs.GetMin();
+      double fps_max = camera_->AcquisitionFrameRateAbs.GetMax();
+
+      if (fps < fps_min) fps = fps_min;
+      if (fps < fps_max) fps = fps_max;
+
+      BOOST_LOG_TRIVIAL(info) << "Free running at " << fps << " FPS";
+
+      camera_->TriggerMode.SetValue(TriggerMode_Off);
+
+      camera_->AcquisitionMode.SetValue(AcquisitionMode_Continuous);
       camera_->AcquisitionFrameRateEnable.SetValue(true);
-      camera_->AcquisitionFrameRateAbs.SetValue(1.0 / period());
+      camera_->AcquisitionFrameRateAbs.SetValue(1.0e6 / period());
     }
   else
     {
       camera_->AcquisitionFrameRateEnable.SetValue(false);
-      camera_->TriggerMode.SetValue(Basler_GigECamera::TriggerModeEnums::TriggerMode_On);
-      camera_->TriggerSource.SetValue(Basler_GigECamera::TriggerSourceEnums::TriggerSource_Line1);
-      camera_->TriggerSelector.SetValue(Basler_GigECamera::TriggerSelectorEnums::TriggerSelector_FrameStart);
+
+      camera_->TriggerSelector.SetValue(TriggerSelector_FrameStart);
+      camera_->TriggerMode.SetValue(TriggerMode_On);
+      camera_->TriggerSource.SetValue(TriggerSource_Line1);
+      camera_->ExposureMode.SetValue(ExposureMode_Timed);
     }
 
   sampler_ = std::thread(&BaslerCamera::SampleLoop, this);
@@ -195,8 +235,15 @@ i3ds::BaslerCamera::is_sampling_supported(SampleCommand sample)
 {
   BOOST_LOG_TRIVIAL(info) << "is_rate_supported() " << sample.period;
 
-  // TODO: Add some real checking here, it might be different dependent on trigger.
-  return 50000 <= sample.period && sample.period <= 10000000;
+  const double fps = 1.0e6 / sample.period;
+  const double fps_min = camera_->AcquisitionFrameRateAbs.GetMin();
+  const double fps_max = camera_->AcquisitionFrameRateAbs.GetMax();
+
+  BOOST_LOG_TRIVIAL(info) <<  "fps: " << fps
+			  << " min: " << fps_min
+			  << " max: " << fps_max;
+
+  return fps_min <= fps && fps <= fps_max;
 }
 
 void
@@ -211,27 +258,75 @@ i3ds::BaslerCamera::handle_exposure(ExposureService::Data& command)
       throw i3ds::CommandError(error_value, "In auto-exposure mode");
     }
 
-  // TODO: Need convertion?
-  camera_->ExposureTimeAbs.SetValue(1);
-  camera_->ExposureTimeRaw.SetValue(command.request.shutter);
-  camera_->GainRaw.SetValue(command.request.gain);
+  int64_t shutter = command.request.shutter;
+  int64_t shutter_max = camera_->ExposureTimeRaw.GetMax();
+  int64_t shutter_min = camera_->ExposureTimeRaw.GetMin();
+
+  if (shutter > (int64_t) period())
+    {
+      throw i3ds::CommandError(error_value, "Shutter longer than period!");
+    }
+
+  if (shutter > shutter_max)
+    {
+      throw i3ds::CommandError(error_value, "Shutter longer than " + std::to_string(shutter_max));
+    }
+
+  if (shutter < shutter_min)
+    {
+      throw i3ds::CommandError(error_value, "Shutter shorter than " + std::to_string(shutter_min));
+    }
+
+  int64_t raw = gain_to_raw(command.request.gain);
+  int64_t raw_max = camera_->GainRaw.GetMax();
+  int64_t raw_min = camera_->GainRaw.GetMin();
+
+  if (raw > raw_max)
+    {
+      throw i3ds::CommandError(error_value, "Gain higher than " + std::to_string(raw_to_gain(raw_max)));
+    }
+
+  if (raw < raw_min)
+    {
+      throw i3ds::CommandError(error_value, "Gain lower than " + std::to_string(raw_to_gain(raw_min)));
+    }
+
+  try
+    {
+      camera_->ExposureTimeRaw.SetValue(shutter);
+      camera_->GainRaw.SetValue(raw);
+    }
+  catch (GenICam::GenericException& e)
+    {
+      BOOST_LOG_TRIVIAL(warning) << e.what();
+    }
 }
 
 void
 i3ds::BaslerCamera::handle_auto_exposure(AutoExposureService::Data& command)
 {
+  using namespace Basler_GigECamera;
+
   BOOST_LOG_TRIVIAL(info) << "handle_auto_exposure";
 
   check_active();
 
   if (command.request.enable)
     {
-      camera_->ExposureAuto.SetValue(Basler_GigECamera::ExposureAutoEnums::ExposureAuto_Continuous);
-      //camera_->MaxShutterTime.SetValue(command.request.max_shutter);
+      double min_gain = camera_->AutoGainRawLowerLimit.GetMin();
+      double max_gain = gain_to_raw(command.request.max_gain);
+
+      camera_->AutoGainRawLowerLimit.SetValue(min_gain);
+      camera_->AutoGainRawUpperLimit.SetValue(max_gain);
+
+      camera_->AutoFunctionProfile.SetValue(AutoFunctionProfile_GainMinimum);
+      camera_->GainAuto.SetValue(GainAuto_Continuous);
+      camera_->ExposureAuto.SetValue(ExposureAuto_Continuous);
     }
   else
     {
-      camera_->ExposureAuto.SetValue(Basler_GigECamera::ExposureAutoEnums::ExposureAuto_Off);
+      camera_->GainAuto.SetValue(GainAuto_Off);
+      camera_->ExposureAuto.SetValue(ExposureAuto_Off);
     }
 }
 
@@ -295,16 +390,22 @@ i3ds::BaslerCamera::handle_pattern(PatternService::Data& command)
 bool
 i3ds::BaslerCamera::send_sample(const byte* image, int width, int height)
 {
-  BOOST_LOG_TRIVIAL(info) << "BaslerCamera::send_sample()";
+  BOOST_LOG_TRIVIAL(info) << "BaslerCamera::send_sample() (" << width << "x" << height << ")" ;
 
   Camera::FrameTopic::Data frame;
 
   Camera::FrameTopic::Codec::Initialize(frame);
 
+  frame.descriptor.attributes.timestamp = 1;
+  frame.descriptor.attributes.validity = sample_valid;
+
+  frame.descriptor.region.offset_x = 0;
+  frame.descriptor.region.offset_y = 0;
   frame.descriptor.region.size_x = (T_UInt16) width;
   frame.descriptor.region.size_y = (T_UInt16) height;
+
   frame.descriptor.frame_mode = mode_mono;
-  frame.descriptor.data_depth = param_.data_depth;
+  frame.descriptor.data_depth = 12;
   frame.descriptor.pixel_size = 2;
   frame.descriptor.image_count = 1;
 
@@ -340,25 +441,37 @@ i3ds::BaslerCamera::SampleLoop()
 
   while (camera_->IsGrabbing())
     {
-      // Wait for an image and then retrieve it.
-      camera_->RetrieveResult(timeout_ms, ptrGrabResult, Pylon::TimeoutHandling_ThrowException);
+      try
+	{
+	  // Wait for an image and then retrieve it.
+	  camera_->RetrieveResult(timeout_ms, ptrGrabResult, Pylon::TimeoutHandling_ThrowException);
 
-      // Image grabbed successfully?
-      if (ptrGrabResult->GrabSucceeded())
-        {
-          // Access the image data.
-          const int width = ptrGrabResult->GetWidth();
-          const int height = ptrGrabResult->GetHeight();
+	  // Image grabbed successfully?
+	  if (ptrGrabResult->GrabSucceeded())
+	    {
+	      // Access the image data.
+	      const int width = ptrGrabResult->GetWidth();
+	      const int height = ptrGrabResult->GetHeight();
 
-          const byte* pImageBuffer = (const byte*) ptrGrabResult->GetBuffer();
+	      const byte* pImageBuffer = (const byte*) ptrGrabResult->GetBuffer();
 
-          send_sample(pImageBuffer, width, height);
-        }
-      else
-        {
-          BOOST_LOG_TRIVIAL(info) << "Error grabbing: "
-                                  << ptrGrabResult->GetErrorCode() << " "
-                                  << ptrGrabResult->GetErrorDescription();
-        }
+	      send_sample(pImageBuffer, width, height);
+	    }
+	  else
+	    {
+	      BOOST_LOG_TRIVIAL(info) << "Error grabbing: "
+				      << ptrGrabResult->GetErrorCode() << " "
+				      << ptrGrabResult->GetErrorDescription();
+	    }
+	}
+      catch (TimeoutException& e)
+	{
+	  BOOST_LOG_TRIVIAL(warning) << "TIMEOUT!";
+	}
+      catch (GenICam::GenericException& e)
+	{
+	  BOOST_LOG_TRIVIAL(warning) << e.what();
+	  break;
+	}
     }
 }

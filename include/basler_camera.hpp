@@ -32,7 +32,8 @@ public:
   {
     std::string camera_name;
     bool free_running;
-    int data_depth;
+    int packet_size;
+    int packet_delay;
   };
 
   BaslerCamera(Context::Ptr context, NodeID id, Parameters param);
@@ -76,6 +77,9 @@ private:
 
   const Parameters param_;
 
+  SensorGain raw_to_gain(int64_t raw) const;
+  int64_t gain_to_raw(SensorGain gain) const;
+
   void SampleLoop();
   bool send_sample(const byte* image, int width, int height);
 
@@ -89,8 +93,9 @@ private:
 
   Publisher publisher_;
 
-  Pylon::CBaslerGigEInstantCamera* camera_;
   std::thread sampler_;
+
+  mutable Pylon::CBaslerGigEInstantCamera* camera_;
 };
 
 } // namespace i3ds

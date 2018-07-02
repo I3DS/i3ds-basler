@@ -81,6 +81,9 @@ int main(int argc, char** argv)
 
   po::notify(vm);
 
+  param.packet_size = 8192;
+  param.packet_delay = 0;
+
   BOOST_LOG_TRIVIAL(info) << "Node ID:     " << node_id;
   BOOST_LOG_TRIVIAL(info) << "Camera name: " << param.camera_name;
   BOOST_LOG_TRIVIAL(info) << "Camera type: Basler HR";
