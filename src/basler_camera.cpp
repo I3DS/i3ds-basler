@@ -343,10 +343,39 @@ i3ds::BaslerCamera::handle_region(RegionService::Data& command)
     {
       const PlanarRegion region = command.request.region;
 
-      camera_->OffsetX.SetValue(region.offset_x);
-      camera_->OffsetY.SetValue(region.offset_y);
-      camera_->Width.SetValue(region.size_x);
-      camera_->Height.SetValue(region.size_y);
+      // Test for limits
+      if ((region.size_x + region.offset_x) > (unsigned)camera_->SensorWidth.GetValue())
+	{
+	  throw i3ds::CommandError(error_value, "Width + offset.x is larger than maximum width for camera");
+	}
+
+      if ((region.size_y + region.offset_y) > (unsigned)camera_->SensorHeight.GetValue())
+	{
+	  throw i3ds::CommandError(error_other, "Heigth + offset.y is larger than maximum height for camera");
+	}
+
+      // Have to do resizing in correct order.(Reduse parameter first, increase)
+      if (region.size_x > (unsigned)camera_->Width.GetValue() )
+	{
+	  camera_->OffsetX.SetValue(region.offset_x);
+	  camera_->Width.SetValue(region.size_x);
+	}
+      else
+	{
+	  camera_->Width.SetValue(region.size_x);
+	  camera_->OffsetX.SetValue(region.offset_x);
+	}
+
+      if (region.size_y > (unsigned)camera_->Height.GetValue() )
+	{
+	  camera_->OffsetY.SetValue(region.offset_y);
+	  camera_->Height.SetValue(region.size_y);
+	}
+      else
+	{
+	  camera_->Height.SetValue(region.size_y);
+	  camera_->OffsetY.SetValue(region.offset_y);
+	}
     }
   else
     {
