@@ -42,8 +42,6 @@ void signal_handler(int signum)
   running = false;
 }
 
-
-
 int main(int argc, char** argv)
 {
   unsigned int node_id;
@@ -54,7 +52,7 @@ int main(int argc, char** argv)
 
   desc.add_options()
   ("help,h", "Produce this message")
-  ("node,n", po::value<unsigned int>(&node_id), "Node ID of camera")
+  ("node,n", po::value<unsigned int>(&node_id)->default_value(10), "Node ID of camera")
   ("camera-name,c", po::value<std::string>(&param.camera_name), "Connect via (UserDefinedName) of Camera")
   ("free-running,f", po::bool_switch(&param.free_running)->default_value(false), "Free-running sampling. Default external triggered")
 

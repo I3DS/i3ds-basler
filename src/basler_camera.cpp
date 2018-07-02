@@ -10,11 +10,6 @@
 
 #include "basler_camera.hpp"
 
-#include <iostream>
-#include <sstream>
-#include <iomanip>
-#include <memory>
-
 #define BOOST_LOG_DYN_LINK
 
 #include <boost/log/core.hpp>
@@ -33,6 +28,8 @@ i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, NodeID node, Parameters p
 
   pattern_enabled_ = false;
   pattern_sequence_ = 0;
+
+  camera_ = nullptr;
 }
 
 i3ds::BaslerCamera::~BaslerCamera()
@@ -150,7 +147,6 @@ i3ds::BaslerCamera::do_activate()
     }
 }
 
-// \todo handle rate. What if not set?
 void
 i3ds::BaslerCamera::do_start()
 {
