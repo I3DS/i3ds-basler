@@ -186,7 +186,7 @@ i3ds::BaslerCamera::do_start()
       double fps_max = camera_->AcquisitionFrameRateAbs.GetMax();
 
       if (fps < fps_min) fps = fps_min;
-      if (fps < fps_max) fps = fps_max;
+      if (fps > fps_max) fps = fps_max;
 
       BOOST_LOG_TRIVIAL(info) << "Free running at " << fps << " FPS";
 
@@ -390,7 +390,7 @@ i3ds::BaslerCamera::handle_pattern(PatternService::Data& command)
 bool
 i3ds::BaslerCamera::send_sample(const byte* image, int width, int height)
 {
-  BOOST_LOG_TRIVIAL(info) << "BaslerCamera::send_sample() (" << width << "x" << height << ")" ;
+  BOOST_LOG_TRIVIAL(trace) << "BaslerCamera::send_sample() (" << width << "x" << height << ")" ;
 
   Camera::FrameTopic::Data frame;
 
@@ -459,9 +459,9 @@ i3ds::BaslerCamera::SampleLoop()
 	    }
 	  else
 	    {
-	      BOOST_LOG_TRIVIAL(info) << "Error grabbing: "
-				      << ptrGrabResult->GetErrorCode() << " "
-				      << ptrGrabResult->GetErrorDescription();
+	      BOOST_LOG_TRIVIAL(warning) << "Error grabbing: "
+					 << ptrGrabResult->GetErrorCode() << " "
+					 << ptrGrabResult->GetErrorDescription();
 	    }
 	}
       catch (TimeoutException& e)
