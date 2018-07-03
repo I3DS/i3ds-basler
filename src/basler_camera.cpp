@@ -78,7 +78,7 @@ i3ds::BaslerCamera::gain() const
 bool
 i3ds::BaslerCamera::auto_exposure_enabled() const
 {
-  return camera_->ExposureAuto.GetValue() == Basler_GigECamera::ExposureAuto_Continuous;
+  return (bool) (camera_->ExposureAuto.GetValue() == Basler_GigECamera::ExposureAuto_Continuous);
 }
 
 ShutterTime
