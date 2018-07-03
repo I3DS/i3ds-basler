@@ -20,6 +20,9 @@
 
 namespace logging = boost::log;
 
+using namespace Basler_GigECamera;
+
+
 i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, NodeID node, Parameters param)
   : Camera(node),
     param_(param),
@@ -235,15 +238,58 @@ i3ds::BaslerCamera::is_sampling_supported(SampleCommand sample)
 {
   BOOST_LOG_TRIVIAL(info) << "is_rate_supported() " << sample.period;
 
-  const double fps = 1.0e6 / sample.period;
-  const double fps_min = camera_->AcquisitionFrameRateAbs.GetMin();
-  const double fps_max = camera_->AcquisitionFrameRateAbs.GetMax();
+  /* Algorithm for testing if supported :
+   * if one sets AcquisitionFrameRateAbs Then ResultingFrameRateAbs will give you the what rate you will get
+   *
+   * Algorithm:
+   * 1. Remember old AcquisitionFrameRateAbs
+   * 2. Set Wanted value for  AcquisitionFrameRateAbs
+   * 3. Read out ResultingFrameRateAbs
+   * 4. Set Back old AcquisitionFrameRateAbs
+   * 5. Check if ResultingFrameRateAbs is close to AcquisitionFrameRateAbs, then ok
+   * (Remember Camera is operating i Hertz second (float) , but we get inn period in i us int64 )
+   */
 
-  BOOST_LOG_TRIVIAL(info) <<  "fps: " << fps
-			  << " min: " << fps_min
-			  << " max: " << fps_max;
+  const float wanted_rate_in_Hz = 1.e6 / sample.period;// Convert to Hz
 
-  return fps_min <= fps && fps <= fps_max;
+  // Must be enabled to do calculating
+  camera_->AcquisitionFrameRateEnable.SetValue(true);
+
+  // Remember Old value
+  const float old_sample_rate_in_Hz = camera_->AcquisitionFrameRateAbs.GetValue();
+
+  // 2.
+  BOOST_LOG_TRIVIAL (info) << "Testing frame rate: " << wanted_rate_in_Hz << "Hz";
+  try{
+      camera_->AcquisitionFrameRateAbs.SetValue(wanted_rate_in_Hz);
+  }catch (GenICam::GenericException &e)
+  {
+      // Error handling.
+      BOOST_LOG_TRIVIAL (info)  << "An exception occurred." << e.GetDescription();
+      BOOST_LOG_TRIVIAL (info) << "frame rate is out of range: " << wanted_rate_in_Hz;
+      return false;
+  }
+
+  //3.
+  const float resulting_rate_in_Hz = camera_->ResultingFrameRateAbs.GetValue();
+  BOOST_LOG_TRIVIAL (info) << "Reading Resulting frame rate  (ResultingFrameRateAbs)"
+      << resulting_rate_in_Hz << "Hz";
+
+  //4.
+  BOOST_LOG_TRIVIAL (info) << "Setting back old sample rate";
+  camera_->AcquisitionFrameRateAbs.SetValue(old_sample_rate_in_Hz);
+
+  //.5 Accepting it if result is within 1Hz of wanted_frequency
+  if (abs(wanted_rate_in_Hz - resulting_rate_in_Hz) < 1)
+    {
+      BOOST_LOG_TRIVIAL (info) << "Test of sample rate yields OK. Storing it";
+      return true;
+    }
+  else
+    {
+      BOOST_LOG_TRIVIAL (info) << "Test of sample rate NOT OK. Do not keep it";
+      return false;
+    }
 }
 
 void
@@ -305,7 +351,6 @@ i3ds::BaslerCamera::handle_exposure(ExposureService::Data& command)
 void
 i3ds::BaslerCamera::handle_auto_exposure(AutoExposureService::Data& command)
 {
-  using namespace Basler_GigECamera;
 
   BOOST_LOG_TRIVIAL(info) << "handle_auto_exposure";
 
