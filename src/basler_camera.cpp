@@ -190,7 +190,7 @@ i3ds::BaslerCamera::do_start()
       camera_->AcquisitionMode.SetValue(AcquisitionMode_Continuous);
       camera_->AcquisitionFrameRateAbs.SetValue(1.0e6 / period());
 
-      const double fps = camera_ResultingFrameRateAbs.GetValue();
+      const double fps = camera_->ResultingFrameRateAbs.GetValue();
       BOOST_LOG_TRIVIAL(info) << "Free running at " << fps << " FPS";
     }
   else
