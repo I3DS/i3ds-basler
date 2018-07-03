@@ -85,8 +85,7 @@ ShutterTime
 i3ds::BaslerCamera::max_shutter() const
 {
   // TODO: Check need for convertion.
-  // return camera_->MaxShutterTime.GetValue();
-  return 0;
+  return (ShutterTime) camera_->AutoExposureTimeAbsUpperLimit.GetValue();
 }
 
 SensorGain
