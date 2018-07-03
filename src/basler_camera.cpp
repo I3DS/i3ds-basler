@@ -113,6 +113,14 @@ i3ds::BaslerCamera::region_enabled() const
     }
 }
 
+bool
+i3ds::BaslerCamera::auto_gain_enabled() const
+{
+  return (camera_->GainAuto.GetValue() == GainAuto_Continuous);
+}
+
+
+
 PlanarRegion
 i3ds::BaslerCamera::region() const
 {

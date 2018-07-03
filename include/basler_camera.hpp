@@ -43,6 +43,8 @@ public:
   virtual ShutterTime shutter() const;
   virtual SensorGain gain() const;
 
+  virtual bool auto_gain_enabled() const;
+
   virtual bool auto_exposure_enabled() const;
   virtual ShutterTime max_shutter() const;
   virtual SensorGain max_gain() const;
