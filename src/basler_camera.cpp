@@ -521,8 +521,9 @@ i3ds::BaslerCamera::SampleLoop()
   // This smart pointer will receive the grab result data.
   Pylon::CGrabResultPtr ptrGrabResult;
 
-  // Timeout of twice the period.
-  int timeout_ms = period() / 500;
+  // Timeout 4 times a second. The only thing we are waiting for is actually a stopline.
+  // Else we always are waiting for a image.
+  const int timeout_ms = 250;
 
   // Start the grabbing of images.
   camera_->StartGrabbing();
