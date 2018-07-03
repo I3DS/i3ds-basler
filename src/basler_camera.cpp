@@ -306,9 +306,9 @@ i3ds::BaslerCamera::handle_exposure(ExposureService::Data& command)
       throw i3ds::CommandError(error_value, "In auto-exposure mode");
     }
 
-  int64_t shutter = command.request.shutter;
-  int64_t shutter_max = camera_->ExposureTimeRaw.GetMax();
-  int64_t shutter_min = camera_->ExposureTimeRaw.GetMin();
+  const int64_t shutter = command.request.shutter;
+  const int64_t shutter_max = camera_->ExposureTimeRaw.GetMax();
+  const int64_t shutter_min = camera_->ExposureTimeRaw.GetMin();
 
   if (shutter > (int64_t) period())
     {
@@ -325,9 +325,15 @@ i3ds::BaslerCamera::handle_exposure(ExposureService::Data& command)
       throw i3ds::CommandError(error_value, "Shutter shorter than " + std::to_string(shutter_min));
     }
 
-  int64_t raw = gain_to_raw(command.request.gain);
-  int64_t raw_max = camera_->GainRaw.GetMax();
-  int64_t raw_min = camera_->GainRaw.GetMin();
+
+  if (auto_gain_enabled())
+    {
+      throw i3ds::CommandError(error_value, "AutoGain not in off mode");
+    }
+
+  const int64_t raw = gain_to_raw(command.request.gain);
+  const int64_t raw_max = camera_->GainRaw.GetMax();
+  const int64_t raw_min = camera_->GainRaw.GetMin();
 
   if (raw > raw_max)
     {
