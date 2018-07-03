@@ -380,11 +380,11 @@ i3ds::BaslerCamera::handle_auto_exposure_helper(const int64_t max_gain_parameter
   camera_->GainAuto.SetValue(GainAuto_Continuous);
   camera_->ExposureAuto.SetValue(ExposureAuto_Continuous);
 
-  const double min_exposure = camera_->ExposureTimeAbs.GetMin();
-  const double max_exposure = camera_->AutoExposureTimeAbsUpperLimit.GetMax();
+  const double min_auto_exposure_lower_limit = camera_->AutoExposureTimeAbsLowerLimit.GetMin();
+  const double max_auto_exposure_upper_limit = max_shutter_time; // camera_->AutoExposureTimeAbsUpperLimit.GetMax();
 
-  camera_->ExposureTimeAbs.SetValue(min_exposure);
-  camera_->AutoExposureTimeAbsUpperLimit.SetValue(max_exposure);
+  camera_->AutoExposureTimeAbsLowerLimit.SetValue(min_auto_exposure_lower_limit);
+  camera_->AutoExposureTimeAbsUpperLimit.SetValue(max_auto_exposure_upper_limit);
 }
 
 
