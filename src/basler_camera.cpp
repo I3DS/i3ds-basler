@@ -164,6 +164,7 @@ i3ds::BaslerCamera::do_activate()
       // Set default sampling to reasonable value.
       if (param_.free_running)
         {
+	  camera_->AcquisitionFrameRateEnable.SetValue(true);
           camera_->AcquisitionFrameRateAbs.SetValue(10.0);
         }
     }
