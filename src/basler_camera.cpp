@@ -185,20 +185,13 @@ i3ds::BaslerCamera::do_start()
 
   if (param_.free_running)
     {
-      double fps = 1.0e6 / period();
-      double fps_min = camera_->AcquisitionFrameRateAbs.GetMin();
-      double fps_max = camera_->AcquisitionFrameRateAbs.GetMax();
-
-      if (fps < fps_min) fps = fps_min;
-      if (fps > fps_max) fps = fps_max;
-
-      BOOST_LOG_TRIVIAL(info) << "Free running at " << fps << " FPS";
-
       camera_->TriggerMode.SetValue(TriggerMode_Off);
-
-      camera_->AcquisitionMode.SetValue(AcquisitionMode_Continuous);
       camera_->AcquisitionFrameRateEnable.SetValue(true);
+      camera_->AcquisitionMode.SetValue(AcquisitionMode_Continuous);
       camera_->AcquisitionFrameRateAbs.SetValue(1.0e6 / period());
+
+      const double fps = camera_ResultingFrameRateAbs.GetValue();
+      BOOST_LOG_TRIVIAL(info) << "Free running at " << fps << " FPS";
     }
   else
     {
