@@ -362,6 +362,29 @@ i3ds::BaslerCamera::handle_exposure(ExposureService::Data& command)
     }
 }
 
+
+
+void
+i3ds::BaslerCamera::handle_auto_exposure_helper(const int64_t max_gain_parameter) const
+{
+  const double min_gain = camera_->AutoGainRawLowerLimit.GetMin();
+  const double max_gain = gain_to_raw(max_gain_parameter);
+
+  camera_->AutoGainRawLowerLimit.SetValue(min_gain);
+  camera_->AutoGainRawUpperLimit.SetValue(max_gain);
+
+  camera_->AutoFunctionProfile.SetValue(AutoFunctionProfile_GainMinimum);
+  camera_->GainAuto.SetValue(GainAuto_Continuous);
+  camera_->ExposureAuto.SetValue(ExposureAuto_Continuous);
+
+  const double min_exposure = camera_->ExposureTimeAbs.GetMin();
+  const double max_exposure = camera_->AutoExposureTimeAbsUpperLimit.GetMax();
+
+  camera_->ExposureTimeAbs.SetValue(min_exposure);
+  camera_->AutoExposureTimeAbsUpperLimit.SetValue(max_exposure);
+}
+
+
 void
 i3ds::BaslerCamera::handle_auto_exposure(AutoExposureService::Data& command)
 {
@@ -372,15 +395,7 @@ i3ds::BaslerCamera::handle_auto_exposure(AutoExposureService::Data& command)
 
   if (command.request.enable)
     {
-      double min_gain = camera_->AutoGainRawLowerLimit.GetMin();
-      double max_gain = gain_to_raw(command.request.max_gain);
-
-      camera_->AutoGainRawLowerLimit.SetValue(min_gain);
-      camera_->AutoGainRawUpperLimit.SetValue(max_gain);
-
-      camera_->AutoFunctionProfile.SetValue(AutoFunctionProfile_GainMinimum);
-      camera_->GainAuto.SetValue(GainAuto_Continuous);
-      camera_->ExposureAuto.SetValue(ExposureAuto_Continuous);
+      handle_auto_exposure_helper(command.request.max_gain);
     }
   else
     {

@@ -45,6 +45,8 @@ public:
 
   virtual bool auto_gain_enabled() const;
 
+  virtual void handle_auto_exposure_helper(const int64_t max_gain_parameter) const;
+
   virtual bool auto_exposure_enabled() const;
   virtual ShutterTime max_shutter() const;
   virtual SensorGain max_gain() const;
