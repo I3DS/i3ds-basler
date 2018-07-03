@@ -169,6 +169,10 @@ i3ds::BaslerCamera::do_activate()
       // Switching format
       camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono12);
 
+      // Force it in auto_exposure mode when starting up
+      const double max_gain = camera_->AutoGainRawLowerLimit.GetMin();
+      handle_auto_exposure_helper(max_gain);
+
       // Set default sampling to reasonable value.
       if (param_.free_running)
         {
