@@ -168,16 +168,20 @@ i3ds::BaslerCamera::do_activate()
       // Switching format
       camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono12);
 
-      // Force it in auto_exposure mode when starting up
-      const double max_gain = camera_->AutoGainRawLowerLimit.GetMin();
-      handle_auto_exposure_helper(max_gain);
-
       // Set default sampling to reasonable value.
       if (param_.free_running)
         {
 	  camera_->AcquisitionFrameRateEnable.SetValue(true);
           camera_->AcquisitionFrameRateAbs.SetValue(10.0);
         }
+
+      // Force it in auto_exposure mode when starting up
+      int64_t max_auto_shutter = camera_->AutoExposureTimeAbsUpperLimit.GetMax();
+      int64_t max_auto_gain = raw_to_gain(camera_->AutoGainRawUpperLimit.GetMax());
+
+      handle_auto_exposure_helper(max_auto_shutter, max_auto_gain);
+
+
     }
   catch (GenICam::GenericException &e)
     {
@@ -368,8 +372,9 @@ i3ds::BaslerCamera::handle_exposure(ExposureService::Data& command)
 
 
 void
-i3ds::BaslerCamera::handle_auto_exposure_helper(const int64_t max_gain_parameter) const
+i3ds::BaslerCamera::handle_auto_exposure_helper(const int64_t max_shutter_time, const int64_t max_gain_parameter) const
 {
+  BOOST_LOG_TRIVIAL(info) << "handle_auto_exposure_helper";
   const double min_gain = camera_->AutoGainRawLowerLimit.GetMin();
   const double max_gain = gain_to_raw(max_gain_parameter);
 
@@ -398,7 +403,7 @@ i3ds::BaslerCamera::handle_auto_exposure(AutoExposureService::Data& command)
 
   if (command.request.enable)
     {
-      handle_auto_exposure_helper(command.request.max_gain);
+      handle_auto_exposure_helper(command.request.max_shutter, command.request.max_gain);
     }
   else
     {
