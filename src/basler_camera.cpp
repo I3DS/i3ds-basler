@@ -240,6 +240,12 @@ i3ds::BaslerCamera::is_sampling_supported(SampleCommand sample)
 {
   BOOST_LOG_TRIVIAL(info) << "is_rate_supported() " << sample.period;
 
+  if(!param_.free_running)
+    {
+      BOOST_LOG_TRIVIAL(info) << "sampling_period is not supported in triggered mode";
+      throw i3ds::CommandError(error_other, "Sampling period is not supported in triggered mode");
+    }
+
   /* Algorithm for testing if supported :
    * if one sets AcquisitionFrameRateAbs Then ResultingFrameRateAbs will give you the what rate you will get
    *
