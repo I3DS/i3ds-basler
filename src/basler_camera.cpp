@@ -419,9 +419,15 @@ i3ds::BaslerCamera::handle_region(RegionService::Data& command)
   if (command.request.enable)
     {
       const PlanarRegion region = command.request.region;
-
+      BOOST_LOG_TRIVIAL(info) << "handle_region()";
       // Test for limits
-      if ((region.size_x + region.offset_x) > (unsigned)camera_->SensorWidth.GetValue())
+
+      if (region.size_x < 0 || region.size_y < 0 || region.offset_x <= 0 || region.offset_y <= 0 )
+	{
+	  throw i3ds::CommandError(error_value, "One or more of region parameters are too small");
+	}
+
+      if ((region.size_x + region.offset_x) > (unsigned) camera_->SensorWidth.GetValue())
 	{
 	  throw i3ds::CommandError(error_value, "Width + offset.x is larger than maximum width for camera");
 	}
