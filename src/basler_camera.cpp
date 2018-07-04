@@ -375,6 +375,27 @@ void
 i3ds::BaslerCamera::handle_auto_exposure_helper(const int64_t max_shutter_time, const int64_t max_gain_parameter) const
 {
   BOOST_LOG_TRIVIAL(info) << "handle_auto_exposure_helper";
+
+  // Check limits
+  const double auto_exposure_max_limit = camera_->AutoExposureTimeAbsUpperLimit.GetMax();
+  const double auto_exposure_min_limit = camera_->AutoExposureTimeAbsUpperLimit.GetMin();
+  if ((max_shutter_time > auto_exposure_max_limit) || (max_shutter_time < auto_exposure_min_limit ))
+    {
+      throw i3ds::CommandError(error_value, "MaxShutterTime must be within: [" +
+					     std::to_string(auto_exposure_min_limit) + "," +
+					     std::to_string(auto_exposure_max_limit) + "]");
+    }
+
+  const double auto_gain_max_limit = camera_->AutoGainRawUpperLimit.GetMax();
+  const double auto_gain_min_limit = camera_->AutoGainRawUpperLimit.GetMin();
+  if (( max_shutter_time > auto_gain_max_limit ) || ( max_shutter_time < auto_gain_min_limit ))
+    {
+      throw i3ds::CommandError(error_value,
+			       "AutoGain must be within: [" +
+			       std::to_string(auto_gain_min_limit) + "," +
+			       std::to_string(auto_gain_max_limit) + "]");
+    }
+
   const double min_gain = camera_->AutoGainRawLowerLimit.GetMin();
   const double max_gain = gain_to_raw(max_gain_parameter);
 
