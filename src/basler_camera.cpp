@@ -449,17 +449,21 @@ i3ds::BaslerCamera::handle_region(RegionService::Data& command)
       // Test for limits
       if ((region.size_x == 0) || (region.size_y == 0))
 	{
-	  throw i3ds::CommandError(error_value, "One or more of region parameters are too small");
+	  throw i3ds::CommandError(error_value, "One or more of region parameters are zero");
 	}
 
-      if ((region.size_x + region.offset_x) > (unsigned) camera_->SensorWidth.GetValue())
+      if ((region.size_x + region.offset_x) > ((unsigned) camera_->SensorWidth.GetValue()) )
 	{
-	  throw i3ds::CommandError(error_value, "Width + offset.x is larger than maximum width for camera");
+	  throw i3ds::CommandError(error_value,  std::string("Width + offset.x is larger than maximum width for camera : ") +
+						 std::to_string(region.size_x + region.offset_x) + " < "+
+						 std::to_string(camera_->SensorWidth.GetValue()));
 	}
 
       if ((region.size_y + region.offset_y) > (unsigned) camera_->SensorHeight.GetValue())
 	{
-	  throw i3ds::CommandError(error_other, "Heigth + offset.y is larger than maximum height for camera");
+	  throw i3ds::CommandError(error_other, std::string("Heigth + offset.y is larger than maximum height for camera: ") +
+						std::to_string(region.size_y + region.offset_y) + " < " +
+						std::to_string((unsigned) camera_->SensorHeight.GetValue()));
 	}
       // Have to do resizing in correct order.(Reduse parameter first, increase)
       if (region.size_x > (unsigned) camera_->Width.GetValue() )
