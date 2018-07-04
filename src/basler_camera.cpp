@@ -407,7 +407,7 @@ i3ds::BaslerCamera::handle_auto_exposure_helper(const int64_t max_shutter_time, 
   camera_->ExposureAuto.SetValue(ExposureAuto_Continuous);
 
   const double min_auto_exposure_lower_limit = camera_->AutoExposureTimeAbsLowerLimit.GetMin();
-  const double max_auto_exposure_upper_limit = max_shutter_time; // camera_->AutoExposureTimeAbsUpperLimit.GetMax();
+  const double max_auto_exposure_upper_limit = max_shutter_time;
 
   camera_->AutoExposureTimeAbsLowerLimit.SetValue(min_auto_exposure_lower_limit);
   camera_->AutoExposureTimeAbsUpperLimit.SetValue(max_auto_exposure_upper_limit);
@@ -465,7 +465,8 @@ i3ds::BaslerCamera::handle_region(RegionService::Data& command)
 						std::to_string(region.size_y + region.offset_y) + " < " +
 						std::to_string((unsigned) camera_->SensorHeight.GetValue()));
 	}
-      // Have to do resizing in correct order.(Reduse parameter first, increase)
+
+      // Have to do resizing in correct order.(Reduse parameter first, increase later)
       if (region.size_x > (unsigned) camera_->Width.GetValue() )
 	{
 	  camera_->OffsetX.SetValue(region.offset_x);
