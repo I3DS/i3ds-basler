@@ -441,14 +441,13 @@ i3ds::BaslerCamera::handle_region(RegionService::Data& command)
 
   check_standby();
 
-  // TODO: Reset to full resolution if enable is false.
   if (command.request.enable)
     {
       const PlanarRegion region = command.request.region;
       BOOST_LOG_TRIVIAL(info) << "handle_region()";
-      // Test for limits
 
-      if (region.size_x < 0 || region.size_y < 0 || region.offset_x <= 0 || region.offset_y <= 0 )
+      // Test for limits
+      if ((region.size_x == 0) || (region.size_y == 0))
 	{
 	  throw i3ds::CommandError(error_value, "One or more of region parameters are too small");
 	}
