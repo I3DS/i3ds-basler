@@ -12,9 +12,10 @@
 #ifndef __BASLER_CAMERA_HPP
 #define __BASLER_CAMERA_HPP
 
-#include "i3ds/topic.hpp"
-#include "i3ds/publisher.hpp"
-#include "i3ds/camera_sensor.hpp"
+#include <i3ds/topic.hpp>
+#include <i3ds/publisher.hpp>
+#include <i3ds/camera_sensor.hpp>
+#include <i3ds/trigger_client.hpp>
 
 #include <thread>
 
@@ -31,12 +32,18 @@ public:
   struct Parameters
   {
     std::string camera_name;
-    bool free_running;
     int packet_size;
     int packet_delay;
+    int trigger_source;
+    int camera_output;
+    int camera_offset;
+    int flash_output;
+    int flash_offset;
+    int pattern_output;
+    int pattern_offset;
   };
 
-  BaslerCamera(Context::Ptr context, NodeID id, Parameters param);
+  BaslerCamera(Context::Ptr context, NodeID id, Parameters param, TriggerClient::Ptr trigger = nullptr);
   virtual ~BaslerCamera();
 
   // Getters.
@@ -87,7 +94,8 @@ private:
   void SampleLoop();
   bool send_sample(const byte* image, int width, int height);
 
-  void updateRegion();
+  void set_trigger(TriggerOutput channel, TriggerOffset offset);
+  void clear_trigger(TriggerOutput channel);
 
   bool flash_enabled_;
   FlashStrength flash_strength_;
@@ -96,6 +104,8 @@ private:
   PatternSequence pattern_sequence_;
 
   Publisher publisher_;
+  TriggerClient::Ptr trigger_;
+  TriggerMask trigger_mask_;
 
   std::thread sampler_;
 

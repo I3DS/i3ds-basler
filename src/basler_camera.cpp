@@ -23,10 +23,11 @@ namespace logging = boost::log;
 using namespace Basler_GigECamera;
 
 
-i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, NodeID node, Parameters param)
+i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, NodeID node, Parameters param, TriggerClient::Ptr trigger)
   : Camera(node),
     param_(param),
-    publisher_(context, node)
+    publisher_(context, node),
+    trigger_(trigger)
 {
   flash_enabled_ = false;
   flash_strength_ = 0.0;
@@ -35,6 +36,17 @@ i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, NodeID node, Parameters p
   pattern_sequence_ = 0;
 
   camera_ = nullptr;
+
+  for (unsigned int i = 0; i < sizeof(trigger_mask_); i++)
+    {
+      trigger_mask_.arr[i] = false;
+    }
+
+  if (trigger_)
+    {
+      // Only wait 100 ms for trigger service.
+      trigger_->set_timeout(100);
+    }
 
   Pylon::PylonInitialize();
 }
@@ -78,7 +90,7 @@ i3ds::BaslerCamera::gain() const
 bool
 i3ds::BaslerCamera::auto_exposure_enabled() const
 {
-  return (bool) (camera_->ExposureAuto.GetValue() == Basler_GigECamera::ExposureAuto_Continuous);
+  return (bool)(camera_->ExposureAuto.GetValue() == Basler_GigECamera::ExposureAuto_Continuous);
 }
 
 ShutterTime
@@ -117,8 +129,6 @@ i3ds::BaslerCamera::auto_gain_enabled() const
 {
   return (camera_->GainAuto.GetValue() == GainAuto_Continuous);
 }
-
-
 
 PlanarRegion
 i3ds::BaslerCamera::region() const
@@ -169,10 +179,14 @@ i3ds::BaslerCamera::do_activate()
       camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono12);
 
       // Set default sampling to reasonable value.
-      if (param_.free_running)
+      if (trigger_)
         {
-	  camera_->AcquisitionFrameRateEnable.SetValue(true);
-          camera_->AcquisitionFrameRateAbs.SetValue(10.0);
+          set_trigger(param_.camera_output, param_.camera_offset);
+        }
+      else
+        {
+          camera_->AcquisitionFrameRateEnable.SetValue(true);
+          camera_->AcquisitionFrameRateAbs.SetValue(1.0e6 / period());
         }
 
       // Force it in auto_exposure mode when starting up
@@ -198,7 +212,19 @@ i3ds::BaslerCamera::do_start()
 
   BOOST_LOG_TRIVIAL(info) << "do_start()";
 
-  if (param_.free_running)
+  if (trigger_)
+    {
+      camera_->AcquisitionFrameRateEnable.SetValue(false);
+
+      camera_->TriggerSelector.SetValue(TriggerSelector_FrameStart);
+      camera_->TriggerMode.SetValue(TriggerMode_On);
+      camera_->TriggerSource.SetValue(TriggerSource_Line1);
+      camera_->ExposureMode.SetValue(ExposureMode_Timed);
+
+      trigger_->set_generator(param_.trigger_source, period());
+      trigger_->enable_channels(trigger_mask_);
+    }
+  else
     {
       camera_->TriggerMode.SetValue(TriggerMode_Off);
       camera_->AcquisitionFrameRateEnable.SetValue(true);
@@ -208,15 +234,6 @@ i3ds::BaslerCamera::do_start()
       const double fps = camera_->ResultingFrameRateAbs.GetValue();
       BOOST_LOG_TRIVIAL(info) << "Free running at " << fps << " FPS";
     }
-  else
-    {
-      camera_->AcquisitionFrameRateEnable.SetValue(false);
-
-      camera_->TriggerSelector.SetValue(TriggerSelector_FrameStart);
-      camera_->TriggerMode.SetValue(TriggerMode_On);
-      camera_->TriggerSource.SetValue(TriggerSource_Line1);
-      camera_->ExposureMode.SetValue(ExposureMode_Timed);
-    }
 
   sampler_ = std::thread(&BaslerCamera::SampleLoop, this);
 }
@@ -225,6 +242,11 @@ void
 i3ds::BaslerCamera::do_stop()
 {
   BOOST_LOG_TRIVIAL(info) << "do_stop()";
+
+  if (trigger_)
+    {
+      trigger_->disable_channels(trigger_mask_);
+    }
 
   camera_->StopGrabbing();
 
@@ -247,10 +269,10 @@ i3ds::BaslerCamera::is_sampling_supported(SampleCommand sample)
 {
   BOOST_LOG_TRIVIAL(info) << "is_rate_supported() " << sample.period;
 
-  if(!param_.free_running)
+  if (trigger_)
     {
-      BOOST_LOG_TRIVIAL(info) << "sampling_period is not supported in triggered mode";
-      throw i3ds::CommandError(error_other, "Sampling period is not supported in triggered mode");
+      // Minimal period 50 ms (= 20 Hz) and maximal 16.7 seconds for external trigger.
+      return 50000 <= sample.period && sample.period <= 16777215;
     }
 
   /* Algorithm for testing if supported :
@@ -274,35 +296,37 @@ i3ds::BaslerCamera::is_sampling_supported(SampleCommand sample)
   const float old_sample_rate_in_Hz = camera_->AcquisitionFrameRateAbs.GetValue();
 
   // 2.
-  BOOST_LOG_TRIVIAL (info) << "Testing frame rate: " << wanted_rate_in_Hz << "Hz";
-  try{
+  BOOST_LOG_TRIVIAL(info) << "Testing frame rate: " << wanted_rate_in_Hz << "Hz";
+  try
+    {
       camera_->AcquisitionFrameRateAbs.SetValue(wanted_rate_in_Hz);
-  }catch (GenICam::GenericException &e)
-  {
+    }
+  catch (GenICam::GenericException &e)
+    {
       // Error handling.
-      BOOST_LOG_TRIVIAL (info)  << "An exception occurred." << e.GetDescription();
-      BOOST_LOG_TRIVIAL (info) << "frame rate is out of range: " << wanted_rate_in_Hz;
+      BOOST_LOG_TRIVIAL(info)  << "An exception occurred." << e.GetDescription();
+      BOOST_LOG_TRIVIAL(info) << "frame rate is out of range: " << wanted_rate_in_Hz;
       return false;
-  }
+    }
 
   //3.
   const float resulting_rate_in_Hz = camera_->ResultingFrameRateAbs.GetValue();
-  BOOST_LOG_TRIVIAL (info) << "Reading Resulting frame rate  (ResultingFrameRateAbs)"
-      << resulting_rate_in_Hz << "Hz";
+  BOOST_LOG_TRIVIAL(info) << "Reading Resulting frame rate  (ResultingFrameRateAbs)"
+                          << resulting_rate_in_Hz << "Hz";
 
   //4.
-  BOOST_LOG_TRIVIAL (info) << "Setting back old sample rate";
+  BOOST_LOG_TRIVIAL(info) << "Setting back old sample rate";
   camera_->AcquisitionFrameRateAbs.SetValue(old_sample_rate_in_Hz);
 
   //.5 Accepting it if result is within 1Hz of wanted_frequency
   if (abs(wanted_rate_in_Hz - resulting_rate_in_Hz) < 1)
     {
-      BOOST_LOG_TRIVIAL (info) << "Test of sample rate yields OK. Storing it";
+      BOOST_LOG_TRIVIAL(info) << "Test of sample rate yields OK. Storing it";
       return true;
     }
   else
     {
-      BOOST_LOG_TRIVIAL (info) << "Test of sample rate NOT OK. Do not keep it";
+      BOOST_LOG_TRIVIAL(info) << "Test of sample rate NOT OK. Do not keep it";
       return false;
     }
 }
@@ -379,21 +403,21 @@ i3ds::BaslerCamera::handle_auto_exposure_helper(const int64_t max_shutter_time, 
   // Check limits
   const double auto_exposure_max_limit = camera_->AutoExposureTimeAbsUpperLimit.GetMax();
   const double auto_exposure_min_limit = camera_->AutoExposureTimeAbsUpperLimit.GetMin();
-  if ((max_shutter_time > auto_exposure_max_limit) || (max_shutter_time < auto_exposure_min_limit ))
+  if ((max_shutter_time > auto_exposure_max_limit) || (max_shutter_time < auto_exposure_min_limit))
     {
       throw i3ds::CommandError(error_value, "MaxShutterTime must be within: [" +
-					     std::to_string(auto_exposure_min_limit) + "," +
-					     std::to_string(auto_exposure_max_limit) + "]");
+                               std::to_string(auto_exposure_min_limit) + "," +
+                               std::to_string(auto_exposure_max_limit) + "]");
     }
 
   const double auto_gain_max_limit = camera_->AutoGainRawUpperLimit.GetMax();
   const double auto_gain_min_limit = camera_->AutoGainRawUpperLimit.GetMin();
-  if (( max_shutter_time > auto_gain_max_limit ) || ( max_shutter_time < auto_gain_min_limit ))
+  if ((max_shutter_time > auto_gain_max_limit) || (max_shutter_time < auto_gain_min_limit))
     {
       throw i3ds::CommandError(error_value,
-			       "AutoGain must be within: [" +
-			       std::to_string(auto_gain_min_limit) + "," +
-			       std::to_string(auto_gain_max_limit) + "]");
+                               "AutoGain must be within: [" +
+                               std::to_string(auto_gain_min_limit) + "," +
+                               std::to_string(auto_gain_max_limit) + "]");
     }
 
   const double min_gain = camera_->AutoGainRawLowerLimit.GetMin();
@@ -448,46 +472,46 @@ i3ds::BaslerCamera::handle_region(RegionService::Data& command)
 
       // Test for limits
       if ((region.size_x == 0) || (region.size_y == 0))
-	{
-	  throw i3ds::CommandError(error_value, "One or more of region parameters are zero");
-	}
+        {
+          throw i3ds::CommandError(error_value, "One or more of region parameters are zero");
+        }
 
-      if ((region.size_x + region.offset_x) > ((unsigned) camera_->SensorWidth.GetValue()) )
-	{
-	  throw i3ds::CommandError(error_value,  std::string("Width + offset.x is larger than maximum width for camera : ") +
-						 std::to_string(region.size_x + region.offset_x) + " < "+
-						 std::to_string(camera_->SensorWidth.GetValue()));
-	}
+      if ((region.size_x + region.offset_x) > ((unsigned) camera_->SensorWidth.GetValue()))
+        {
+          throw i3ds::CommandError(error_value,  std::string("Width + offset.x is larger than maximum width for camera : ") +
+                                   std::to_string(region.size_x + region.offset_x) + " < "+
+                                   std::to_string(camera_->SensorWidth.GetValue()));
+        }
 
       if ((region.size_y + region.offset_y) > (unsigned) camera_->SensorHeight.GetValue())
-	{
-	  throw i3ds::CommandError(error_other, std::string("Heigth + offset.y is larger than maximum height for camera: ") +
-						std::to_string(region.size_y + region.offset_y) + " < " +
-						std::to_string((unsigned) camera_->SensorHeight.GetValue()));
-	}
+        {
+          throw i3ds::CommandError(error_other, std::string("Heigth + offset.y is larger than maximum height for camera: ") +
+                                   std::to_string(region.size_y + region.offset_y) + " < " +
+                                   std::to_string((unsigned) camera_->SensorHeight.GetValue()));
+        }
 
       // Have to do resizing in correct order.(Reduse parameter first, increase later)
-      if (region.size_x > (unsigned) camera_->Width.GetValue() )
-	{
-	  camera_->OffsetX.SetValue(region.offset_x);
-	  camera_->Width.SetValue(region.size_x);
-	}
+      if (region.size_x > (unsigned) camera_->Width.GetValue())
+        {
+          camera_->OffsetX.SetValue(region.offset_x);
+          camera_->Width.SetValue(region.size_x);
+        }
       else
-	{
-	  camera_->Width.SetValue(region.size_x);
-	  camera_->OffsetX.SetValue(region.offset_x);
-	}
+        {
+          camera_->Width.SetValue(region.size_x);
+          camera_->OffsetX.SetValue(region.offset_x);
+        }
 
-      if (region.size_y > (unsigned) camera_->Height.GetValue() )
-	{
-	  camera_->OffsetY.SetValue(region.offset_y);
-	  camera_->Height.SetValue(region.size_y);
-	}
+      if (region.size_y > (unsigned) camera_->Height.GetValue())
+        {
+          camera_->OffsetY.SetValue(region.offset_y);
+          camera_->Height.SetValue(region.size_y);
+        }
       else
-	{
-	  camera_->Height.SetValue(region.size_y);
-	  camera_->OffsetY.SetValue(region.offset_y);
-	}
+        {
+          camera_->Height.SetValue(region.size_y);
+          camera_->OffsetY.SetValue(region.offset_y);
+        }
     }
   else
     {
@@ -505,11 +529,25 @@ i3ds::BaslerCamera::handle_flash(FlashService::Data& command)
 
   check_standby();
 
+  if (!trigger_)
+    {
+      throw i3ds::CommandError(error_other, "Flash not supported in free-running mode");
+    }
+
   flash_enabled_ = command.request.enable;
 
   if (command.request.enable)
     {
+      // TODO: Send command to flash serial service.
       flash_strength_ = command.request.strength;
+
+      // Enable trigger for flash.
+      set_trigger(param_.flash_output, param_.flash_offset);
+    }
+  else
+    {
+      // Clear trigger, not enabled when operational.
+      clear_trigger(param_.flash_output);
     }
 }
 
@@ -520,12 +558,51 @@ i3ds::BaslerCamera::handle_pattern(PatternService::Data& command)
 
   check_standby();
 
+  if (!trigger_)
+    {
+      throw i3ds::CommandError(error_other, "Pattern not supported in free-running mode");
+    }
+
   pattern_enabled_ = command.request.enable;
 
   if (command.request.enable)
     {
+      // Only support one pattern sequence, not controllable as of now.
+      if (command.request.sequence != 1)
+        {
+          throw i3ds::CommandError(error_value, "Unsupported pattern sequence");
+        }
+
       pattern_sequence_ = command.request.sequence;
+
+      // Enable trigger for flash.
+      set_trigger(param_.pattern_output, param_.pattern_offset);
     }
+  else
+    {
+      // Reset pattern sequence to disabled.
+      pattern_sequence_ = 0;
+
+      // Clear trigger, not enabled when operational.
+      clear_trigger(param_.pattern_output);
+    }
+}
+
+void
+i3ds::BaslerCamera::set_trigger(TriggerOutput channel, TriggerOffset offset)
+{
+  // Set the channel to fire at offset with 100 us pulse.
+  trigger_->set_interal_channel(channel, param_.trigger_source, offset, 100);
+
+  // Enable the trigger on do_start.
+  trigger_mask_.arr[channel - 1] = true;
+}
+
+void
+i3ds::BaslerCamera::clear_trigger(TriggerOutput channel)
+{
+  // Do not enable the trigger on do_start.
+  trigger_mask_.arr[channel - 1] = false;
 }
 
 bool
@@ -584,36 +661,36 @@ i3ds::BaslerCamera::SampleLoop()
   while (camera_->IsGrabbing())
     {
       try
-	{
-	  // Wait for an image and then retrieve it.
-	  camera_->RetrieveResult(timeout_ms, ptrGrabResult, Pylon::TimeoutHandling_ThrowException);
+        {
+          // Wait for an image and then retrieve it.
+          camera_->RetrieveResult(timeout_ms, ptrGrabResult, Pylon::TimeoutHandling_ThrowException);
 
-	  // Image grabbed successfully?
-	  if (ptrGrabResult->GrabSucceeded())
-	    {
-	      // Access the image data.
-	      const int width = ptrGrabResult->GetWidth();
-	      const int height = ptrGrabResult->GetHeight();
+          // Image grabbed successfully?
+          if (ptrGrabResult->GrabSucceeded())
+            {
+              // Access the image data.
+              const int width = ptrGrabResult->GetWidth();
+              const int height = ptrGrabResult->GetHeight();
 
-	      const byte* pImageBuffer = (const byte*) ptrGrabResult->GetBuffer();
+              const byte* pImageBuffer = (const byte*) ptrGrabResult->GetBuffer();
 
-	      send_sample(pImageBuffer, width, height);
-	    }
-	  else
-	    {
-	      BOOST_LOG_TRIVIAL(warning) << "Error grabbing: "
-					 << ptrGrabResult->GetErrorCode() << " "
-					 << ptrGrabResult->GetErrorDescription();
-	    }
-	}
+              send_sample(pImageBuffer, width, height);
+            }
+          else
+            {
+              BOOST_LOG_TRIVIAL(warning) << "Error grabbing: "
+                                         << ptrGrabResult->GetErrorCode() << " "
+                                         << ptrGrabResult->GetErrorDescription();
+            }
+        }
       catch (TimeoutException& e)
-	{
-	  BOOST_LOG_TRIVIAL(warning) << "TIMEOUT!";
-	}
+        {
+          BOOST_LOG_TRIVIAL(warning) << "TIMEOUT!";
+        }
       catch (GenICam::GenericException& e)
-	{
-	  BOOST_LOG_TRIVIAL(warning) << e.what();
-	  break;
-	}
+        {
+          BOOST_LOG_TRIVIAL(warning) << e.what();
+          break;
+        }
     }
 }
