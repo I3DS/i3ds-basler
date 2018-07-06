@@ -37,11 +37,6 @@ i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, NodeID node, Parameters p
 
   camera_ = nullptr;
 
-  for (unsigned int i = 0; i < sizeof(trigger_mask_); i++)
-    {
-      trigger_mask_.arr[i] = false;
-    }
-
   if (trigger_)
     {
       // Only wait 100 ms for trigger service.
@@ -222,7 +217,7 @@ i3ds::BaslerCamera::do_start()
       camera_->ExposureMode.SetValue(ExposureMode_Timed);
 
       trigger_->set_generator(param_.trigger_source, period());
-      trigger_->enable_channels(trigger_mask_);
+      trigger_->enable_channels(trigger_outputs_);
     }
   else
     {
@@ -245,7 +240,7 @@ i3ds::BaslerCamera::do_stop()
 
   if (trigger_)
     {
-      trigger_->disable_channels(trigger_mask_);
+      trigger_->disable_channels(trigger_outputs_);
     }
 
   camera_->StopGrabbing();
@@ -261,7 +256,16 @@ i3ds::BaslerCamera::do_deactivate()
 {
   camera_->Close();
   delete camera_;
+
   camera_ = nullptr;
+
+  flash_enabled_ = false;
+  flash_strength_ = 0.0;
+
+  pattern_enabled_ = false;
+  pattern_sequence_ = 0;
+
+  trigger_outputs_.clear();
 }
 
 bool
@@ -592,17 +596,17 @@ void
 i3ds::BaslerCamera::set_trigger(TriggerOutput channel, TriggerOffset offset)
 {
   // Set the channel to fire at offset with 100 us pulse.
-  trigger_->set_interal_channel(channel, param_.trigger_source, offset, 100);
+  trigger_->set_internal_channel(channel, param_.trigger_source, offset, 100);
 
   // Enable the trigger on do_start.
-  trigger_mask_.arr[channel - 1] = true;
+  trigger_outputs_.insert(channel);
 }
 
 void
 i3ds::BaslerCamera::clear_trigger(TriggerOutput channel)
 {
   // Do not enable the trigger on do_start.
-  trigger_mask_.arr[channel - 1] = false;
+  trigger_outputs_.erase(channel);
 }
 
 bool

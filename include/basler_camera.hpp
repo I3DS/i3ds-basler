@@ -105,7 +105,7 @@ private:
 
   Publisher publisher_;
   TriggerClient::Ptr trigger_;
-  TriggerMask trigger_mask_;
+  TriggerOutputSet trigger_outputs_;
 
   std::thread sampler_;
 

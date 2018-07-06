@@ -54,10 +54,19 @@ int main(int argc, char** argv)
   desc.add_options()
   ("help,h", "Produce this message")
   ("node,n", po::value<unsigned int>(&node_id)->default_value(10), "Node ID of camera")
-  ("trigger-node,t", po::value<unsigned int>(&trigger_node_id)->default_value(20), "Node ID of trigger service")
   ("camera-name,c", po::value<std::string>(&param.camera_name), "Connect via (UserDefinedName) of Camera")
-  ("free-running,f", po::bool_switch(&free_running)->default_value(false), "Free-running sampling. Default external triggered.")
-
+  ("free-running,f", po::bool_switch(&free_running)->default_value(false),
+   "Free-running sampling. Default external triggered.")
+  ("trigger-node", po::value<unsigned int>(&trigger_node_id)->default_value(20), "Node ID of trigger service.")
+  ("trigger-source", po::value<int>(&param.trigger_source)->default_value(1), "Trigger generator for camera.")
+  ("trigger-camera-output", po::value<int>(&param.camera_output)->default_value(1), "Trigger output for camera.")
+  ("trigger-flash-output", po::value<int>(&param.flash_output)->default_value(7),
+   "Trigger output for flash, 0 to disable.")
+  ("trigger-pattern-output", po::value<int>(&param.trigger_source)->default_value(5),
+   "Trigger output for pattern, 0 to disable.")
+  ("trigger-camera-offset", po::value<int>(&param.camera_offset)->default_value(5000), "Trigger offset for camera (us).")
+  ("trigger-flash-offset", po::value<int>(&param.flash_offset)->default_value(4200), "Trigger offset for flash (us).")
+  ("trigger-pattern-offset", po::value<int>(&param.pattern_offset)->default_value(0), "Trigger offset for pattern (us).")
   ("verbose,v", "Print verbose output")
   ("quite,q", "Quiet ouput")
   ("print", "Print the camera configuration")
@@ -83,6 +92,7 @@ int main(int argc, char** argv)
 
   po::notify(vm);
 
+  // TODO: Read these from config file or parameters?
   param.packet_size = 8192;
   param.packet_delay = 10;
 
