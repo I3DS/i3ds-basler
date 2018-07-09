@@ -13,6 +13,19 @@ set (PROJECT_VERSION "1.0")
 
 enable_testing ()
 
+option(BUILD_EMBEDDED "Build for embedded systems" OFF)
+
+if (BUILD_EMBEDDED)
+  if(NOT DEFINED CMAKE_FIND_ROOT_PATH)
+    MESSAGE(FATAL_ERROR "CMAKE_FIND_ROOT_PATH path must be set when compiling for embedded")
+  endif(NOT DEFINED CMAKE_FIND_ROOT_PATH)
+  SET(CMAKE_C_COMPILER "aarch64-linux-gnu-gcc")
+  SET(CMAKE_CXX_COMPILER "aarch64-linux-gnu-g++")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --sysroot=${CMAKE_FIND_ROOT_PATH}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --sysroot=${CMAKE_FIND_ROOT_PATH}")
+endif (BUILD_EMBEDDED)
+
+
 ################################################################################
 # Check that the C++ compiler supports C++11 or C++0X, else issue warning.
 ################################################################################
