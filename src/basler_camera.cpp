@@ -596,7 +596,7 @@ void
 i3ds::BaslerCamera::set_trigger(TriggerOutput channel, TriggerOffset offset)
 {
   // Set the channel to fire at offset with 100 us pulse.
-  trigger_->set_internal_channel(channel, param_.trigger_source, offset, 100);
+  trigger_->set_internal_channel(channel, param_.trigger_source, offset, 100, false);
 
   // Enable the trigger on do_start.
   trigger_outputs_.insert(channel);
