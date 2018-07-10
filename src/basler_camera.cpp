@@ -166,6 +166,9 @@ i3ds::BaslerCamera::do_activate()
       // Open camera.
       camera_->Open();
 
+      BOOST_LOG_TRIVIAL(info) << "param_.packet_size: " << param_.packet_size;
+      BOOST_LOG_TRIVIAL(info) << "packet_delay: " << param_.packet_delay;
+
       // Set streaming options.
       camera_->GevSCPSPacketSize.SetValue(param_.packet_size);
       camera_->GevSCPD.SetValue(param_.packet_delay);

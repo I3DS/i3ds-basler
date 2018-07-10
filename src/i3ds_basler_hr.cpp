@@ -57,6 +57,10 @@ int main(int argc, char** argv)
   ("camera-name,c", po::value<std::string>(&param.camera_name), "Connect via (UserDefinedName) of Camera")
   ("free-running,f", po::bool_switch(&free_running)->default_value(false),
    "Free-running sampling. Default external triggered.")
+
+   ("package-size,p", po::value<int>(&param.packet_size)->default_value(8192), "Transport-layer buffersize (MTU).")
+   ("package-delay,d", po::value<int>(&param.packet_delay)->default_value(20), "Inter-package delay parameter of camera.")
+
   ("trigger-node", po::value<unsigned int>(&trigger_node_id)->default_value(20), "Node ID of trigger service.")
   ("trigger-source", po::value<int>(&param.trigger_source)->default_value(1), "Trigger generator for camera.")
   ("trigger-camera-output", po::value<int>(&param.camera_output)->default_value(1), "Trigger output for camera.")
@@ -93,8 +97,8 @@ int main(int argc, char** argv)
   po::notify(vm);
 
   // TODO: Read these from config file or parameters?
-  param.packet_size = 8192;
-  param.packet_delay = 10;
+  //param.packet_size = 8192;
+  //param.packet_delay = 20;
 
   BOOST_LOG_TRIVIAL(info) << "Node ID:     " << node_id;
   BOOST_LOG_TRIVIAL(info) << "Camera name: " << param.camera_name;
