@@ -409,7 +409,7 @@ i3ds::BaslerCamera::handle_auto_exposure_helper(const int64_t max_shutter_time, 
 
   // Check limits
   const double auto_exposure_max_limit = camera_->AutoExposureTimeAbsUpperLimit.GetMax();
-  const double auto_exposure_min_limit = camera_->AutoExposureTimeAbsUpperLimit.GetMin();
+  const double auto_exposure_min_limit = camera_->AutoExposureTimeAbsLowerLimit.GetMin();
   if ((max_shutter_time > auto_exposure_max_limit) || (max_shutter_time < auto_exposure_min_limit))
     {
       throw i3ds::CommandError(error_value, "MaxShutterTime must be within: [" +
@@ -417,21 +417,25 @@ i3ds::BaslerCamera::handle_auto_exposure_helper(const int64_t max_shutter_time, 
                                std::to_string(auto_exposure_max_limit) + "]");
     }
 
-  const double auto_gain_max_limit = camera_->AutoGainRawUpperLimit.GetMax();
-  const double auto_gain_min_limit = camera_->AutoGainRawUpperLimit.GetMin();
-  if ((max_shutter_time > auto_gain_max_limit) || (max_shutter_time < auto_gain_min_limit))
+  const double auto_gain_max_limit_raw = camera_->AutoGainRawUpperLimit.GetMax();
+  const double auto_gain_min_limit_raw = camera_->AutoGainRawLowerLimit.GetMin();
+  const double min_gain_raw = camera_->AutoGainRawLowerLimit.GetMin();
+   const double max_gain_parameter_raw = gain_to_raw(max_gain_parameter);
+
+
+
+  if ((max_gain_parameter_raw > auto_gain_max_limit_raw) || (max_gain_parameter_raw < auto_gain_min_limit_raw))
     {
       throw i3ds::CommandError(error_value,
-                               "AutoGain must be within: [" +
-                               std::to_string(auto_gain_min_limit) + "," +
-                               std::to_string(auto_gain_max_limit) + "]");
+                               "Max_AutoGain must be within: [" +
+                               std::to_string(raw_to_gain(auto_gain_min_limit_raw)) + "," +
+                               std::to_string(raw_to_gain(auto_gain_max_limit_raw)) + "]");
     }
 
-  const double min_gain = camera_->AutoGainRawLowerLimit.GetMin();
-  const double max_gain = gain_to_raw(max_gain_parameter);
 
-  camera_->AutoGainRawLowerLimit.SetValue(min_gain);
-  camera_->AutoGainRawUpperLimit.SetValue(max_gain);
+
+  camera_->AutoGainRawLowerLimit.SetValue(min_gain_raw);
+  camera_->AutoGainRawUpperLimit.SetValue(max_gain_parameter_raw);
 
   camera_->AutoFunctionProfile.SetValue(AutoFunctionProfile_GainMinimum);
   camera_->GainAuto.SetValue(GainAuto_Continuous);
