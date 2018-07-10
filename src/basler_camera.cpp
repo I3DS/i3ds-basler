@@ -420,7 +420,7 @@ i3ds::BaslerCamera::handle_auto_exposure_helper(const int64_t max_shutter_time, 
   const double auto_gain_max_limit_raw = camera_->AutoGainRawUpperLimit.GetMax();
   const double auto_gain_min_limit_raw = camera_->AutoGainRawLowerLimit.GetMin();
   const double min_gain_raw = camera_->AutoGainRawLowerLimit.GetMin();
-   const double max_gain_parameter_raw = gain_to_raw(max_gain_parameter);
+  const double max_gain_parameter_raw = gain_to_raw(max_gain_parameter);
 
 
 
@@ -549,7 +549,6 @@ i3ds::BaslerCamera::handle_flash(FlashService::Data& command)
 
   if (command.request.enable)
     {
-      // TODO: Send command to flash serial service.
       flash_strength_ = command.request.strength;
 
       // Enable trigger for flash.
