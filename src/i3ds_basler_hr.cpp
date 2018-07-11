@@ -73,6 +73,8 @@ int main(int argc, char** argv)
   ("trigger-flash-output", po::value<int>(&param.flash_output)->default_value(7),
    "Trigger output for flash, 0 to disable.")
   ("trigger-pattern-output", po::value<int>(&param.trigger_source)->default_value(5),
+   ("flash-port", po::value<std::string>(&param.wa_flash_port)->default_value(DEFAULT_WA_FLASH_SERIAL_PORT), "Port name of WA flash")
+
    "Trigger output for pattern, 0 to disable.")
   ("trigger-camera-offset", po::value<int>(&param.camera_offset)->default_value(5000), "Trigger offset for camera (us).")
   ("trigger-flash-offset", po::value<int>(&param.flash_offset)->default_value(4200), "Trigger offset for flash (us).")
