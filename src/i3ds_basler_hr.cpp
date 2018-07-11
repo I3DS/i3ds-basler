@@ -69,12 +69,12 @@ int main(int argc, char** argv)
 
   ("trigger-node", po::value<unsigned int>(&trigger_node_id)->default_value(20), "Node ID of trigger service.")
   ("trigger-source", po::value<int>(&param.trigger_source)->default_value(1), "Trigger generator for camera.")
-  ("trigger-camera-output", po::value<int>(&param.camera_output)->default_value(1), "Trigger output for camera.")
-  ("trigger-flash-output", po::value<int>(&param.flash_output)->default_value(7),
+  ("trigger-camera-output", po::value<int>(&param.camera_output)->default_value(2), "Trigger output for camera.")
+  ("trigger-flash-output", po::value<int>(&param.flash_output)->default_value(8),
    "Trigger output for flash, 0 to disable.")
-  ("trigger-pattern-output", po::value<int>(&param.trigger_source)->default_value(5),
    ("flash-port", po::value<std::string>(&param.wa_flash_port)->default_value(DEFAULT_WA_FLASH_SERIAL_PORT), "Port name of WA flash")
 
+  ("trigger-pattern-output", po::value<int>(&param.trigger_source)->default_value(6),
    "Trigger output for pattern, 0 to disable.")
   ("trigger-camera-offset", po::value<int>(&param.camera_offset)->default_value(5000), "Trigger offset for camera (us).")
   ("trigger-flash-offset", po::value<int>(&param.flash_offset)->default_value(4200), "Trigger offset for flash (us).")
