@@ -44,6 +44,7 @@ public:
     int flash_offset;
     int pattern_output;
     int pattern_offset;
+    std::string wa_flash_port;
   };
 
   BaslerCamera(Context::Ptr context, NodeID id, Parameters param, TriggerClient::Ptr trigger = nullptr);
@@ -102,6 +103,8 @@ private:
 
   bool flash_enabled_;
   FlashStrength flash_strength_;
+
+  std::unique_ptr<SerialCommunicator> flash_configurator_;
 
   bool pattern_enabled_;
   PatternSequence pattern_sequence_;

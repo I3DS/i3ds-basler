@@ -18,6 +18,7 @@
 
 #include <cmath>
 
+
 namespace logging = boost::log;
 
 using namespace Basler_GigECamera;
@@ -42,6 +43,8 @@ i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, NodeID node, Parameters p
       // Only wait 100 ms for trigger service.
       trigger_->set_timeout(100);
     }
+
+  flash_configurator_ = std::unique_ptr<SerialCommunicator>(new SerialCommunicator(param.wa_flash_port.c_str()));
 
   Pylon::PylonInitialize();
 }
@@ -553,6 +556,14 @@ i3ds::BaslerCamera::handle_flash(FlashService::Data& command)
 
       // Enable trigger for flash.
       set_trigger(param_.flash_output, param_.flash_offset);
+
+      flash_configurator_->sendConfigurationParameters (
+	  1, 			// Configure strobe output
+	  flash_duration_in_ms,	// Pulse width ms
+	  0.01, 		// Delay from trigger to pulse in ms(0.01 to 999)
+	  flash_strength_	/// Settings in percent
+	  ); 			// 5th parameter retrigger delay in ms(optional not used)
+
     }
   else
     {
