@@ -554,6 +554,30 @@ i3ds::BaslerCamera::handle_flash(FlashService::Data& command)
     {
       flash_strength_ = command.request.strength;
 
+
+      if (flash_strength_ > 100)
+	{
+	  throw i3ds::CommandError(error_value, "The flash can not give more than 100%");
+	}
+
+      int flash_duration_in_ms;
+
+      if (auto_exposure_enabled())
+	{
+	  flash_duration_in_ms = camera_->AutoExposureTimeAbsUpperLimit.GetValue() / 1000.;
+	}
+      else
+	{
+	  flash_duration_in_ms = camera_->ExposureTimeRaw.GetValue() / 1000.;
+	}
+
+      // Upper limit for flash
+      if (flash_duration_in_ms > 999)
+	{
+	  flash_duration_in_ms = 999;
+	}
+
+
       // Enable trigger for flash.
       set_trigger(param_.flash_output, param_.flash_offset);
 
