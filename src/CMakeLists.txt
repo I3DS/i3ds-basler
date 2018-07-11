@@ -38,6 +38,7 @@ endif (NOT(BUILD_EMBEDDED))
 
 set (SRCS
   basler_camera.cpp
+  serial_communicator.cpp
   )
 
 set (LIBS
@@ -54,3 +55,10 @@ add_executable (i3ds_basler_hr i3ds_basler_hr.cpp ${SRCS})
 target_compile_options(i3ds_basler_hr PRIVATE ${BASLER_HR_CPPFLAGS} -Wno-unknown-pragmas)
 target_link_libraries (i3ds_basler_hr ${BASLER_HR_LIB_FLAGS} ${BASLER_HR_LDFLAGS} ${LIBS})
 install(TARGETS i3ds_basler_hr DESTINATION bin)
+
+
+
+add_executable (serial_communicator serial_communicator.cpp serial_communicator_test.cpp)
+target_compile_options(serial_communicator PRIVATE ${BASLER_HR_CPPFLAGS} -Wno-unknown-pragmas)
+target_link_libraries (serial_communicator ${BASLER_HR_LIB_FLAGS} ${BASLER_HR_LDFLAGS} ${Boost_LIBRARIES})
+install(TARGETS serial_communicator DESTINATION bin)

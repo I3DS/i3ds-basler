@@ -18,9 +18,12 @@
 #include <i3ds/trigger_client.hpp>
 
 #include <thread>
+#include <memory>
 
 #include <pylon/PylonIncludes.h>
 #include <pylon/gige/BaslerGigEInstantCamera.h>
+
+#include "serial_communicator.hpp"
 
 namespace i3ds
 {

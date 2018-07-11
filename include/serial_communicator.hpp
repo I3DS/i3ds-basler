@@ -1,3 +1,6 @@
+#include <sys/poll.h>
+
+
 
 class SerialCommunicator
 {

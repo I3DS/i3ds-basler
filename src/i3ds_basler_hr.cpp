@@ -36,11 +36,17 @@ namespace logging = boost::log;
 
 volatile bool running;
 
+
+#define DEFAULT_WA_FLASH_SERIAL_PORT "/dev/ttyUSB0"
+
 void signal_handler(int signum)
 {
   BOOST_LOG_TRIVIAL(info) << "do_deactivate()";
   running = false;
 }
+
+
+
 
 int main(int argc, char** argv)
 {
