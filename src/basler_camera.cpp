@@ -359,17 +359,17 @@ i3ds::BaslerCamera::handle_exposure(ExposureService::Data& command)
 
   if (shutter > (int64_t) period())
     {
-      throw i3ds::CommandError(error_value, "Shutter longer than period!");
+      throw i3ds::CommandError(error_value, "Shutter time longer than period!");
     }
 
   if (shutter > shutter_max)
     {
-      throw i3ds::CommandError(error_value, "Shutter longer than " + std::to_string(shutter_max));
+      throw i3ds::CommandError(error_value, "Shutter time longer than " + std::to_string(shutter_max));
     }
 
   if (shutter < shutter_min)
     {
-      throw i3ds::CommandError(error_value, "Shutter shorter than " + std::to_string(shutter_min));
+      throw i3ds::CommandError(error_value, "Shutter time shorter than " + std::to_string(shutter_min));
     }
 
 
