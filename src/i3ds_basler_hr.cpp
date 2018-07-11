@@ -102,9 +102,6 @@ int main(int argc, char** argv)
 
   po::notify(vm);
 
-  // TODO: Read these from config file or parameters?
-  //param.packet_size = 8192;
-  //param.packet_delay = 20;
 
   BOOST_LOG_TRIVIAL(info) << "Node ID:     " << node_id;
   BOOST_LOG_TRIVIAL(info) << "Camera name: " << param.camera_name;
