@@ -559,8 +559,8 @@ i3ds::BaslerCamera::handle_flash(FlashService::Data& command)
 	{
 	  throw i3ds::CommandError(error_value, "The flash can not give more than 100%");
 	}
-
-      int flash_duration_in_ms;
+      BOOST_LOG_TRIVIAL(info) << "handle_flash()";
+      float flash_duration_in_ms;
 
       if (auto_exposure_enabled())
 	{
@@ -570,16 +570,29 @@ i3ds::BaslerCamera::handle_flash(FlashService::Data& command)
 	{
 	  flash_duration_in_ms = camera_->ExposureTimeRaw.GetValue() / 1000.;
 	}
+      BOOST_LOG_TRIVIAL(info) << "handle_flash()" << flash_duration_in_ms;
 
       // Upper limit for flash
-      if (flash_duration_in_ms > 999)
+      if (flash_duration_in_ms > 3)
 	{
-	  flash_duration_in_ms = 999;
+	  flash_duration_in_ms = 3;
 	}
 
+      /// Remark: Err 5 is a out of range warning for one parameter.
+      /// It is fixed to valid value.
+      /// But, it looks as there is a limit with a relationship between duration and flash strength
+      /// http://www.gardasoft.com/downloads/?f=112
+      //  Page 13(Read it)
+      ///
+      //Output brightness		850nm variant    | 			|	White variant
+      //			Allowed pulsewidth |Allowed duty cycle 	| Allowed pulse width   |   Allowed duty cycle
+      // 0% to  20% 		3ms 			6% 			3ms 			3%
+      //21% to  30% 		3ms 			6%	 		2ms 			3%
+      //31% to  50% 		3ms 			3% 			2ms 			2%
+      //51% to 100% 		2ms 			3% 			1ms 			1%
 
-      // Enable trigger for flash.
-      set_trigger(param_.flash_output, param_.flash_offset);
+
+
 
       flash_configurator_->sendConfigurationParameters (
 	  1, 			// Configure strobe output
@@ -587,6 +600,10 @@ i3ds::BaslerCamera::handle_flash(FlashService::Data& command)
 	  0.01, 		// Delay from trigger to pulse in ms(0.01 to 999)
 	  flash_strength_	/// Settings in percent
 	  ); 			// 5th parameter retrigger delay in ms(optional not used)
+
+      // Enable trigger for flash.
+      set_trigger(param_.flash_output, param_.flash_offset);
+
 
     }
   else
