@@ -37,7 +37,7 @@ namespace logging = boost::log;
 volatile bool running;
 
 
-#define DEFAULT_WA_FLASH_SERIAL_PORT "/dev/ttyUSB0"
+#define DEFAULT_WA_FLASH_SERIAL_PORT "/dev/ttyS3"
 
 void signal_handler(int signum)
 {
