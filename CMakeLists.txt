@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 2.8)
 # Set some project wide defintions
 ################################################################################
 
-project (i3ds-cosine)
+project (i3ds-basler)
 
 set (PROJECT_AUTHOR "SINTEF Digital")
 set (PROJECT_URL "http://i3ds-h2020.eu/")
