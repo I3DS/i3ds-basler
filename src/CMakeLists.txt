@@ -16,7 +16,7 @@ if (NOT(BUILD_EMBEDDED) AND NOT(BUILD_PETALINUX))
   string(REGEX REPLACE "\n$" "" BASLER_HR_LDFLAGS "${BASLER_HR_LDFLAGS}")  #Strip newline
   message(STATUS "BASLER_HR_LDFLAGS=${BASLER_HR_LDFLAGS}")
 
-  execute_process(COMMAND ${PYLON_ROOT}/bin/pylon-config --libs OUTPUT_VARIABLE BASLER_HR_LDLIBS) 
+  execute_process(COMMAND ${PYLON_ROOT}/bin/pylon-config --libs OUTPUT_VARIABLE BASLER_HR_LDLIBS)
   #-lopencv_core -lopencv_highgui -lpthread
   string(STRIP "${BASLER_HR_LDLIBS}" ${BASLER_HR_LDLIBS})
   string(REGEX REPLACE "\n$" "" BASLER_HR_LDLIBS "${BASLER_HR_LDLIBS}") #Strip newline
@@ -31,9 +31,13 @@ if (NOT(BUILD_EMBEDDED) AND NOT(BUILD_PETALINUX))
 
   # Basler HR sample END
 else (NOT(BUILD_EMBEDDED) AND NOT(BUILD_PETALINUX))
-  include_directories (SYSTEM  "${CMAKE_FIND_ROOT_PATH}/usr/include/pylon5" "/usr/include/pylon5")
+  find_file(pylon_INCLUDE_DIR include/pylon5)
+  find_file(pylon_LIB_DIR lib/pylon5)
+  
+  include_directories (SYSTEM "${pylon_INCLUDE_DIR}")
   set (BASLER_HR_LDFLAGS "-Wl,--enable-new-dtags -Wl,-rpath,/opt/pylon5/lib64")
-  set (BASLER_HR_LDLIBS "-L${CMAKE_FIND_ROOT_PATH}/usr/lib/pylon5 -L/usr/lib/pylon5 -Wl,-E -lpylonbase -lpylonutility -lGenApi_gcc_v3_0_Basler_pylon_v5_0 -lGCBase_gcc_v3_0_Basler_pylon_v5_0 -lLog_gcc_v3_0_Basler_pylon_v5_0 -lMathParser_gcc_v3_0_Basler_pylon_v5_0 -lXmlParser_gcc_v3_0_Basler_pylon_v5_0 -lNodeMapData_gcc_v3_0_Basler_pylon_v5_0")
+  set (BASLER_HR_LDLIBS "-L${pylon_LIB_DIR} -Wl,-E -lpylonbase -lpylonutility -lGenApi_gcc_v3_0_Basler_pylon_v5_0 -lGCBase_gcc_v3_0_Basler_pylon_v5_0 -lLog_gcc_v3_0_Basler_pylon_v5_0 -lMathParser_gcc_v3_0_Basler_pylon_v5_0 -lXmlParser_gcc_v3_0_Basler_pylon_v5_0 -lNodeMapData_gcc_v3_0_Basler_pylon_v5_0")
+  #-L${CMAKE_FIND_ROOT_PATH}/usr/lib/pylon5 -L/usr/lib/pylon5 
 endif (NOT(BUILD_EMBEDDED) AND NOT(BUILD_PETALINUX))
 
 set (SRCS
