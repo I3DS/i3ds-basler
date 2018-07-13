@@ -1,6 +1,6 @@
 find_package (Boost COMPONENTS program_options log REQUIRED)
 
-if (NOT(BUILD_EMBEDDED))
+if (NOT(BUILD_EMBEDDED) AND NOT(BUILD_PETALINUX))
   set (PYLON_ROOT /opt/pylon5)
 
   execute_process(COMMAND ${PYLON_ROOT}/bin/pylon-config --cflags OUTPUT_VARIABLE BASLER_HR_CPPFLAGS)
@@ -30,11 +30,11 @@ if (NOT(BUILD_EMBEDDED))
   #LDLIBS     := $(shell $(PYLON_ROOT)/bin/pylon-config --libs) -lopencv_core -lopencv_highgui -lpthread
 
   # Basler HR sample END
-else (NOT(BUILD_EMBEDDED))
+else (NOT(BUILD_EMBEDDED) AND NOT(BUILD_PETALINUX))
   include_directories (SYSTEM  "${CMAKE_FIND_ROOT_PATH}/usr/include/pylon5")
   set (BASLER_HR_LDFLAGS "-Wl,--enable-new-dtags -Wl,-rpath,/opt/pylon5/lib64")
   set (BASLER_HR_LDLIBS "-L${CMAKE_FIND_ROOT_PATH}/usr/lib/pylon5 -L/usr/lib/pylon5 -Wl,-E -lpylonbase -lpylonutility -lGenApi_gcc_v3_0_Basler_pylon_v5_0 -lGCBase_gcc_v3_0_Basler_pylon_v5_0 -lLog_gcc_v3_0_Basler_pylon_v5_0 -lMathParser_gcc_v3_0_Basler_pylon_v5_0 -lXmlParser_gcc_v3_0_Basler_pylon_v5_0 -lNodeMapData_gcc_v3_0_Basler_pylon_v5_0")
-endif (NOT(BUILD_EMBEDDED))
+endif (NOT(BUILD_EMBEDDED) AND NOT(BUILD_PETALINUX))
 
 set (SRCS
   basler_camera.cpp

@@ -14,6 +14,7 @@ set (PROJECT_VERSION "1.0")
 enable_testing ()
 
 option(BUILD_EMBEDDED "Build for embedded systems" OFF)
+option(BUILD_PETALINUX "Build for petalinux using bitbake" OFF)
 
 if (BUILD_EMBEDDED)
   if(NOT DEFINED CMAKE_FIND_ROOT_PATH)
