@@ -12,10 +12,7 @@
 #ifndef __BASLER_CAMERA_HPP
 #define __BASLER_CAMERA_HPP
 
-#include <i3ds/topic.hpp>
-#include <i3ds/publisher.hpp>
-#include <i3ds/camera_sensor.hpp>
-#include <i3ds/trigger_client.hpp>
+#include <i3ds/gige_camera_sensor.hpp>
 
 #include <thread>
 #include <memory>
@@ -23,95 +20,83 @@
 #include <pylon/PylonIncludes.h>
 #include <pylon/gige/BaslerGigEInstantCamera.h>
 
-#include "serial_communicator.hpp"
-
 namespace i3ds
 {
 
-class BaslerCamera : public Camera
+class BaslerCamera : public GigECamera
 {
 public:
 
-  struct Parameters
-  {
-    std::string camera_name;
-    int packet_size;
-    int packet_delay;
-    int trigger_source;
-    int camera_output;
-    int camera_offset;
-    int flash_output;
-    int flash_offset;
-    int pattern_output;
-    int pattern_offset;
-    std::string wa_flash_port;
-  };
+  BaslerCamera(Context::Ptr context, NodeID node, Parameters param);
 
-  BaslerCamera(Context::Ptr context, NodeID id, Parameters param, TriggerClient::Ptr trigger = nullptr);
   virtual ~BaslerCamera();
-
-  // Getters.
-  virtual ShutterTime shutter() const;
-  virtual SensorGain gain() const;
-
-  virtual bool auto_gain_enabled() const;
-
-  virtual void handle_auto_exposure_helper(const int64_t max_shutter_time, const int64_t max_gain_parameter) const;
-
-  virtual bool auto_exposure_enabled() const;
-  virtual ShutterTime max_shutter() const;
-  virtual SensorGain max_gain() const;
-
-  virtual bool region_enabled() const;
-  virtual PlanarRegion region() const;
-
-  virtual bool flash_enabled() const {return flash_enabled_;}
-  virtual FlashStrength flash_strength() const {return flash_strength_;}
-
-  virtual bool pattern_enabled() const {return pattern_enabled_;}
-  virtual PatternSequence pattern_sequence() const {return pattern_sequence_;}
-
-  virtual bool is_sampling_supported(SampleCommand sample);
 
 protected:
 
-  // Actions.
-  virtual void do_activate();
-  virtual void do_start();
-  virtual void do_stop();
-  virtual void do_deactivate();
+  // Camera control
+  virtual void Open();
+  virtual void Close();
+  virtual void Start();
+  virtual void Stop();
 
-  // Handlers.
-  virtual void handle_exposure(ExposureService::Data& command);
-  virtual void handle_region(RegionService::Data& command);
-  virtual void handle_auto_exposure(AutoExposureService::Data& command);
-  virtual void handle_flash(FlashService::Data& command);
-  virtual void handle_pattern(PatternService::Data& command);
+  // Set internal trigger to the given period.
+  virtual bool setInternalTrigger(int64_t period_us);
+
+  // Sensor width and height
+  virtual int64_t getSensorWidth() const;
+  virtual int64_t getSensorHeight() const;
+
+  // Region of interest
+  virtual bool isRegionSupported() const;
+
+  virtual int64_t getRegionWidth() const;
+  virtual int64_t getRegionHeight() const;
+  virtual int64_t getRegionOffsetX() const;
+  virtual int64_t getRegionOffsetY() const;
+
+  virtual void setRegionWidth(int64_t width);
+  virtual void setRegionHeight(int64_t height);
+  virtual void setRegionOffsetX(int64_t offset_x);
+  virtual void setRegionOffsetY(int64_t offset_y);
+
+  // Shutter time in microseconds
+  virtual int64_t getShutter() const;
+  virtual int64_t getMaxShutter() const;
+  virtual int64_t getMinShutter() const;
+  virtual void setShutter(int64_t shutter_us);
+
+  virtual bool isAutoShutterSupported() const;
+
+  virtual bool getAutoShutterEnabled() const;
+  virtual void setAutoShutterEnabled(bool enable);
+
+  virtual int64_t getAutoShutterLimit() const;
+  virtual int64_t getMaxAutoShutterLimit() const;
+  virtual int64_t getMinAutoShutterLimit() const;
+  virtual void setAutoShutterLimit(int64_t shutter_limit);
+
+  // Gain in decibel
+  virtual double getGain() const;
+  virtual double getMaxGain() const;
+  virtual double getMinGain() const;
+  virtual void setGain(double gain);
+
+  virtual bool isAutoGainSupported() const;
+
+  virtual bool getAutoGainEnabled() const;
+  virtual void setAutoGainEnabled(bool enable);
+
+  virtual double getAutoGainLimit() const;
+  virtual double getMaxAutoGainLimit() const;
+  virtual double getMinAutoGainLimit() const;
+  virtual void setAutoGainLimit(double gain_limit);
 
 private:
 
-  const Parameters param_;
-
-  SensorGain raw_to_gain(int64_t raw) const;
-  int64_t gain_to_raw(SensorGain gain) const;
+  double raw_to_gain(int64_t raw) const;
+  int64_t gain_to_raw(double gain) const;
 
   void SampleLoop();
-  bool send_sample(const byte* image, int width, int height);
-
-  void set_trigger(TriggerOutput channel, TriggerOffset offset);
-  void clear_trigger(TriggerOutput channel);
-
-  bool flash_enabled_;
-  FlashStrength flash_strength_;
-
-  std::unique_ptr<SerialCommunicator> flash_configurator_;
-
-  bool pattern_enabled_;
-  PatternSequence pattern_sequence_;
-
-  Publisher publisher_;
-  TriggerClient::Ptr trigger_;
-  TriggerOutputSet trigger_outputs_;
 
   std::thread sampler_;
 

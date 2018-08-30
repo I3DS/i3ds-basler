@@ -36,49 +36,43 @@ namespace logging = boost::log;
 
 volatile bool running;
 
-
-#define DEFAULT_WA_FLASH_SERIAL_PORT "/dev/ttyS3"
-
 void signal_handler(int signum)
 {
   BOOST_LOG_TRIVIAL(info) << "do_deactivate()";
   running = false;
 }
 
-
-
-
 int main(int argc, char** argv)
 {
-  unsigned int node_id, trigger_node_id;
-  bool free_running;
+  unsigned int node_id;
 
-  i3ds::BaslerCamera::Parameters param;
+  i3ds::GigECamera::Parameters param;
 
   po::options_description desc("Allowed camera control options");
 
   desc.add_options()
   ("help,h", "Produce this message")
   ("node,n", po::value<unsigned int>(&node_id)->default_value(10), "Node ID of camera")
+
   ("camera-name,c", po::value<std::string>(&param.camera_name), "Connect via (UserDefinedName) of Camera")
-  ("free-running,f", po::bool_switch(&free_running)->default_value(false),
-   "Free-running sampling. Default external triggered.")
+  ("package-size,p", po::value<int>(&param.packet_size)->default_value(8192), "Transport-layer buffersize (MTU).")
+  ("package-delay,d", po::value<int>(&param.packet_delay)->default_value(20), "Inter-package delay parameter of camera.")
 
-   ("package-size,p", po::value<int>(&param.packet_size)->default_value(8192), "Transport-layer buffersize (MTU).")
-   ("package-delay,d", po::value<int>(&param.packet_delay)->default_value(20), "Inter-package delay parameter of camera.")
-
-  ("trigger-node", po::value<unsigned int>(&trigger_node_id)->default_value(20), "Node ID of trigger service.")
+  ("trigger", po::bool_switch(&param.external_trigger)->default_value(true), "External trigger.")
+  ("trigger-node", po::value<NodeID>(&param.trigger_node)->default_value(20), "Node ID of trigger service.")
   ("trigger-source", po::value<int>(&param.trigger_source)->default_value(1), "Trigger generator for camera.")
   ("trigger-camera-output", po::value<int>(&param.camera_output)->default_value(2), "Trigger output for camera.")
-  ("trigger-flash-output", po::value<int>(&param.flash_output)->default_value(8),
-   "Trigger output for flash, 0 to disable.")
-   ("flash-port", po::value<std::string>(&param.wa_flash_port)->default_value(DEFAULT_WA_FLASH_SERIAL_PORT), "Port name of WA flash")
-
-  ("trigger-pattern-output", po::value<int>(&param.trigger_source)->default_value(6),
-   "Trigger output for pattern, 0 to disable.")
   ("trigger-camera-offset", po::value<int>(&param.camera_offset)->default_value(5000), "Trigger offset for camera (us).")
+
+  ("flash", po::bool_switch(&param.support_flash)->default_value(false), "Support wide-angle flash.")
+  ("flash-node", po::value<NodeID>(&param.flash_node)->default_value(21), "Node ID of flash service.")
+  ("trigger-flash-output", po::value<int>(&param.flash_output)->default_value(8), "Trigger output for flash.")
   ("trigger-flash-offset", po::value<int>(&param.flash_offset)->default_value(4200), "Trigger offset for flash (us).")
+
+  ("pattern", po::bool_switch(&param.support_pattern)->default_value(false), "Support pattern illumination.")
+  ("trigger-pattern-output", po::value<int>(&param.trigger_source)->default_value(6), "Trigger output for pattern.")
   ("trigger-pattern-offset", po::value<int>(&param.pattern_offset)->default_value(0), "Trigger offset for pattern (us).")
+
   ("verbose,v", "Print verbose output")
   ("quite,q", "Quiet ouput")
   ("print", "Print the camera configuration")
@@ -104,23 +98,20 @@ int main(int argc, char** argv)
 
   po::notify(vm);
 
-
   BOOST_LOG_TRIVIAL(info) << "Node ID:     " << node_id;
   BOOST_LOG_TRIVIAL(info) << "Camera name: " << param.camera_name;
   BOOST_LOG_TRIVIAL(info) << "Camera type: Basler HR";
 
+  // TODO: Read these from input?
+  param.frame_mode = mode_mono;
+  param.data_depth = 12;
+  param.pixel_size = 2;
+
   i3ds::Context::Ptr context = i3ds::Context::Create();;
-
-  i3ds::TriggerClient::Ptr trigger;
-
-  if (!free_running)
-    {
-      trigger = std::make_shared<i3ds::TriggerClient>(context, trigger_node_id);
-    }
 
   i3ds::Server server(context);
 
-  i3ds::BaslerCamera camera(context, node_id, param, trigger);
+  i3ds::BaslerCamera camera(context, node_id, param);
 
   camera.Attach(server);
 
