@@ -58,7 +58,7 @@ int main(int argc, char** argv)
   ("package-size,p", po::value<int>(&param.packet_size)->default_value(8192), "Transport-layer buffersize (MTU).")
   ("package-delay,d", po::value<int>(&param.packet_delay)->default_value(20), "Inter-package delay parameter of camera.")
 
-  ("trigger", po::bool_switch(&param.external_trigger)->default_value(true), "External trigger.")
+  ("trigger", po::bool_switch(&param.external_trigger)->default_value(false), "External trigger.")
   ("trigger-node", po::value<NodeID>(&param.trigger_node)->default_value(20), "Node ID of trigger service.")
   ("trigger-source", po::value<int>(&param.trigger_source)->default_value(1), "Trigger generator for camera.")
   ("trigger-camera-output", po::value<int>(&param.camera_output)->default_value(2), "Trigger output for camera.")
@@ -104,8 +104,9 @@ int main(int argc, char** argv)
 
   // TODO: Read these from input?
   param.frame_mode = mode_mono;
-  param.data_depth = 12;
-  param.pixel_size = 2;
+  param.data_depth = 8;
+  param.pixel_size = 1;
+  param.image_count = 1;
 
   i3ds::Context::Ptr context = i3ds::Context::Create();;
 

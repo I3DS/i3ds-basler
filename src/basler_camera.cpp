@@ -64,6 +64,9 @@ i3ds::BaslerCamera::Open()
       BOOST_LOG_TRIVIAL(info) << "Full name:     " << camera_->GetDeviceInfo().GetFullName();
       BOOST_LOG_TRIVIAL(info) << "SerialNumber:  " << camera_->GetDeviceInfo().GetSerialNumber();
 
+      // Set device name.
+      set_device_name(camera_->GetDeviceInfo().GetFriendlyName().c_str());
+      
       // Open camera.
       camera_->Open();
 
@@ -74,15 +77,29 @@ i3ds::BaslerCamera::Open()
       camera_->GevSCPSPacketSize.SetValue(param_.packet_size);
       camera_->GevSCPD.SetValue(param_.packet_delay);
 
-      // TODO: Take into account the parameter.
-      camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono12);
+      // Set exposure time base to 10 us if enabled.
+      if (camera_->ExposureTimeBaseAbsEnable.GetValue())
+	{
+	  // TODO: Make this a parameter?
+	  camera_->ExposureTimeBaseAbs.SetValue(10);
+	}
 
-      // Set default sampling to reasonable value.
-      if (!param_.external_trigger)
-        {
-          camera_->AcquisitionFrameRateEnable.SetValue(true);
-          camera_->AcquisitionFrameRateAbs.SetValue(1.0e6 / period());
-        }
+      // Set pixel format depending on data depth.
+      switch (param_.data_depth)
+	{
+	case 12:
+	  BOOST_LOG_TRIVIAL(info) << "Pixel format: Mono12";
+	  camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono12);
+	  break;
+
+	case 8:
+	  BOOST_LOG_TRIVIAL(info) << "Pixel format: Mono8";
+	  camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono8);
+	  break;
+
+	default:
+	  BOOST_LOG_TRIVIAL(error) << "Unsupported data depth: " << param_.data_depth;
+	}
     }
   catch (GenICam::GenericException &e)
     {
@@ -108,21 +125,34 @@ i3ds::BaslerCamera::Start()
 {
   BOOST_LOG_TRIVIAL(info) << "Start()";
 
-  if (param_.external_trigger)
+  try
     {
-      camera_->AcquisitionFrameRateEnable.SetValue(false);
+      if (param_.external_trigger)
+	{
+	  BOOST_LOG_TRIVIAL(info) << "Setting external trigger values";
+	  
+	  camera_->AcquisitionFrameRateEnable.SetValue(false);
 
-      camera_->TriggerSelector.SetValue(TriggerSelector_FrameStart);
-      camera_->TriggerMode.SetValue(TriggerMode_On);
-      camera_->TriggerSource.SetValue(TriggerSource_Line1);
-      camera_->ExposureMode.SetValue(ExposureMode_Timed);
+	  camera_->TriggerSelector.SetValue(TriggerSelector_FrameStart);
+	  camera_->TriggerMode.SetValue(TriggerMode_On);
+	  camera_->TriggerSource.SetValue(TriggerSource_Line1);
+	  camera_->ExposureMode.SetValue(ExposureMode_Timed);
+	}
+      else
+	{
+	  BOOST_LOG_TRIVIAL(info) << "Setting internal trigger values";
+	  
+	  camera_->TriggerMode.SetValue(TriggerMode_Off);
+	  camera_->AcquisitionFrameRateEnable.SetValue(true);
+	  camera_->AcquisitionMode.SetValue(AcquisitionMode_Continuous);
+	  camera_->AcquisitionFrameRateAbs.SetValue(1.0e6 / period());
+	}
     }
-  else
+  catch (GenICam::GenericException &e)
     {
-      camera_->TriggerMode.SetValue(TriggerMode_Off);
-      camera_->AcquisitionFrameRateEnable.SetValue(true);
-      camera_->AcquisitionMode.SetValue(AcquisitionMode_Continuous);
-      camera_->AcquisitionFrameRateAbs.SetValue(1.0e6 / period());
+      BOOST_LOG_TRIVIAL(warning) << e.what();
+
+      throw i3ds::CommandError(error_other, "Error starting camera");;
     }
 
   sampler_ = std::thread(&i3ds::BaslerCamera::SampleLoop, this);
@@ -131,9 +161,16 @@ i3ds::BaslerCamera::Start()
 void
 i3ds::BaslerCamera::Stop()
 {
-  BOOST_LOG_TRIVIAL(info) << "Start()";
+  BOOST_LOG_TRIVIAL(info) << "Stop()";
 
-  camera_->StopGrabbing();
+  try
+    {
+      camera_->StopGrabbing();
+    }
+  catch (GenICam::GenericException &e)
+    {
+      BOOST_LOG_TRIVIAL(warning) << e.what();
+    }
 
   if (sampler_.joinable())
     {
@@ -237,19 +274,19 @@ i3ds::BaslerCamera::getShutter() const
 int64_t
 i3ds::BaslerCamera::getMaxShutter() const
 {
-  return camera_->ExposureTimeRaw.GetMax();
+  return camera_->ExposureTimeAbs.GetMax();
 }
 
 int64_t
 i3ds::BaslerCamera::getMinShutter() const
 {
-  return camera_->ExposureTimeRaw.GetMin();
+  return camera_->ExposureTimeAbs.GetMin();
 }
 
 void
 i3ds::BaslerCamera::setShutter(int64_t shutter_us)
 {
-  camera_->ExposureTimeRaw.SetValue(shutter_us);
+  camera_->ExposureTimeAbs.SetValue(shutter_us);
 }
 
 bool
