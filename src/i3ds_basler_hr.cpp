@@ -42,9 +42,17 @@ void signal_handler(int signum)
   running = false;
 }
 
+struct counter { int count = 0; };
+void validate(boost::any& v, std::vector<std::string> const& xs, counter*, long)
+{
+    if (v.empty()) v = counter{1};
+    else ++boost::any_cast<counter&>(v).count;
+}
+
 int main(int argc, char** argv)
 {
   unsigned int node_id;
+  counter verbosity;
 
   i3ds::GigECamera::Parameters param;
 
@@ -73,13 +81,14 @@ int main(int argc, char** argv)
   ("trigger-pattern-output", po::value<int>(&param.trigger_source)->default_value(6), "Trigger output for pattern.")
   ("trigger-pattern-offset", po::value<int>(&param.pattern_offset)->default_value(0), "Trigger offset for pattern (us).")
 
-  ("verbose,v", "Print verbose output")
-  ("quite,q", "Quiet ouput")
+  ("verbose,v", po::value(&verbosity)->zero_tokens(), "Print verbose output (multiple for more output)")
+  ("quiet,q", "Quiet ouput")
   ("print", "Print the camera configuration")
   ;
 
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
+  po::notify(vm);
 
   if (vm.count("help"))
     {
@@ -87,16 +96,18 @@ int main(int argc, char** argv)
       return -1;
     }
 
-  if (vm.count("quite"))
+  if (vm.count("quiet"))
     {
       logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::warning);
     }
-  else if (!vm.count("verbose"))
-    {
-      logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::info);
-    }
-
-  po::notify(vm);
+  else if (verbosity.count == 1) {
+    logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::debug);
+  } else if (verbosity.count > 1)
+  {
+    logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::trace);
+  } else {
+    logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::info);
+  }
 
   BOOST_LOG_TRIVIAL(info) << "Node ID:     " << node_id;
   BOOST_LOG_TRIVIAL(info) << "Camera name: " << param.camera_name;
