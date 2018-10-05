@@ -44,6 +44,7 @@ i3ds::BaslerCamera::Open()
 {
   BOOST_LOG_TRIVIAL(info) << "Open()";
 
+  camera_ = nullptr;
   try
     {
       Pylon::CDeviceInfo info;
@@ -66,26 +67,20 @@ i3ds::BaslerCamera::Open()
 
       // Set device name.
       set_device_name(camera_->GetDeviceInfo().GetFriendlyName().c_str());
-      
+
       // Open camera.
       camera_->Open();
-
       BOOST_LOG_TRIVIAL(info) << "param_.packet_size: " << param_.packet_size;
       BOOST_LOG_TRIVIAL(info) << "packet_delay: " << param_.packet_delay;
 
-      // Set streaming options.
-      camera_->GevSCPSPacketSize.SetValue(param_.packet_size);
-      camera_->GevSCPD.SetValue(param_.packet_delay);
+      // Close camera if error is later than this.
+      try {
+	// Set streaming options.
+	camera_->GevSCPSPacketSize.SetValue(param_.packet_size);
+	camera_->GevSCPD.SetValue(param_.packet_delay);
 
-      // Set exposure time base to 10 us if enabled.
-      if (camera_->ExposureTimeBaseAbsEnable.GetValue())
-	{
-	  // TODO: Make this a parameter?
-	  camera_->ExposureTimeBaseAbs.SetValue(10);
-	}
-
-      // Set pixel format depending on data depth.
-      switch (param_.data_depth)
+	// Set pixel format depending on data depth.
+	switch (param_.data_depth)
 	{
 	case 12:
 	  BOOST_LOG_TRIVIAL(info) << "Pixel format: Mono12";
@@ -100,7 +95,14 @@ i3ds::BaslerCamera::Open()
 	default:
 	  BOOST_LOG_TRIVIAL(error) << "Unsupported data depth: " << param_.data_depth;
 	}
-    }
+      }
+      catch (GenICam::GenericException &e)
+      {
+	if (camera_) {
+	  camera_->Close();
+	}
+	throw;
+      }
   catch (GenICam::GenericException &e)
     {
       BOOST_LOG_TRIVIAL(warning) << e.what();
@@ -130,7 +132,7 @@ i3ds::BaslerCamera::Start()
       if (param_.external_trigger)
 	{
 	  BOOST_LOG_TRIVIAL(info) << "Setting external trigger values";
-	  
+
 	  camera_->AcquisitionFrameRateEnable.SetValue(false);
 
 	  camera_->TriggerSelector.SetValue(TriggerSelector_FrameStart);
@@ -141,7 +143,7 @@ i3ds::BaslerCamera::Start()
       else
 	{
 	  BOOST_LOG_TRIVIAL(info) << "Setting internal trigger values";
-	  
+
 	  camera_->TriggerMode.SetValue(TriggerMode_Off);
 	  camera_->AcquisitionFrameRateEnable.SetValue(true);
 	  camera_->AcquisitionMode.SetValue(AcquisitionMode_Continuous);
@@ -237,7 +239,7 @@ int64_t
 i3ds::BaslerCamera::getRegionHeight() const
 {
   BOOST_LOG_TRIVIAL(trace) << "getRegionHeight()";
-  
+
   return camera_->Height.GetValue();
 }
 
@@ -245,7 +247,7 @@ int64_t
 i3ds::BaslerCamera::getRegionOffsetX() const
 {
   BOOST_LOG_TRIVIAL(trace) << "getRegionOffsetX()";
-  
+
   return camera_->OffsetX.GetValue();
 }
 
@@ -253,7 +255,7 @@ int64_t
 i3ds::BaslerCamera::getRegionOffsetY() const
 {
   BOOST_LOG_TRIVIAL(trace) << "getRegionOffsetY()";
-  
+
   return camera_->OffsetY.GetValue();
 }
 
@@ -261,7 +263,7 @@ void
 i3ds::BaslerCamera::setRegionWidth(int64_t width)
 {
   BOOST_LOG_TRIVIAL(debug) << "setRegionWidth()";
-  
+
   camera_->Width.SetValue(width);
 }
 
@@ -269,7 +271,7 @@ void
 i3ds::BaslerCamera::setRegionHeight(int64_t height)
 {
   BOOST_LOG_TRIVIAL(debug) << "setRegionHeight()";
-  
+
   camera_->Height.SetValue(height);
 }
 
@@ -277,7 +279,7 @@ void
 i3ds::BaslerCamera::setRegionOffsetX(int64_t offset_x)
 {
   BOOST_LOG_TRIVIAL(debug) << "setRegionOffsetX()";
-  
+
   camera_->OffsetX.SetValue(offset_x);
 }
 
@@ -285,7 +287,7 @@ void
 i3ds::BaslerCamera::setRegionOffsetY(int64_t offset_y)
 {
   BOOST_LOG_TRIVIAL(debug) << "setRegionOffsetY()";
-  
+
   camera_->OffsetY.SetValue(offset_y);
 }
 
@@ -293,7 +295,7 @@ int64_t
 i3ds::BaslerCamera::getShutter() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getShutter()";
-  
+
   return camera_->ExposureTimeAbs.GetValue();
 }
 
@@ -301,7 +303,7 @@ int64_t
 i3ds::BaslerCamera::getMaxShutter() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getMaxShutter()";
-  
+
   return camera_->ExposureTimeAbs.GetMax();
 }
 
@@ -309,7 +311,7 @@ int64_t
 i3ds::BaslerCamera::getMinShutter() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getMinShutter()";
-  
+
   return camera_->ExposureTimeAbs.GetMin();
 }
 
@@ -317,7 +319,7 @@ void
 i3ds::BaslerCamera::setShutter(int64_t shutter_us)
 {
   BOOST_LOG_TRIVIAL(debug) << "setShutter()";
-  
+
   camera_->ExposureTimeAbs.SetValue(shutter_us);
 }
 
@@ -325,7 +327,7 @@ bool
 i3ds::BaslerCamera::isAutoShutterSupported() const
 {
   BOOST_LOG_TRIVIAL(debug) << "isAutoShutterSupported()";
-  
+
   return true;
 }
 
@@ -333,7 +335,7 @@ bool
 i3ds::BaslerCamera::getAutoShutterEnabled() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getAutoShutterEnabled()";
-  
+
   return camera_->ExposureAuto.GetValue() == Basler_GigECamera::ExposureAuto_Continuous;
 }
 
@@ -341,7 +343,7 @@ void
 i3ds::BaslerCamera::setAutoShutterEnabled(bool enable)
 {
   BOOST_LOG_TRIVIAL(debug) << "setAutoShutterEnabled()";
-  
+
   if (enable)
     {
       // TODO: Handle that some cameras don't support profiles.
@@ -358,7 +360,7 @@ int64_t
 i3ds::BaslerCamera::getAutoShutterLimit() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getAutoShutterLimit()";
-  
+
   return camera_->AutoExposureTimeAbsUpperLimit.GetValue();
 }
 
@@ -366,7 +368,7 @@ int64_t
 i3ds::BaslerCamera::getMaxAutoShutterLimit() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getMaxAutoShutterLimit()";
-  
+
   return camera_->AutoExposureTimeAbsUpperLimit.GetMax();
 }
 
@@ -374,7 +376,7 @@ int64_t
 i3ds::BaslerCamera::getMinAutoShutterLimit() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getMinAutoShutterLimit()";
-  
+
   return camera_->AutoExposureTimeAbsUpperLimit.GetMin();
 }
 
@@ -382,7 +384,7 @@ void
 i3ds::BaslerCamera::setAutoShutterLimit(int64_t shutter_limit)
 {
   BOOST_LOG_TRIVIAL(debug) << "setAutoShutterLimit()";
-  
+
   const double lower = camera_->AutoExposureTimeAbsLowerLimit.GetMin();
   const double upper = shutter_limit;
 
@@ -394,7 +396,7 @@ double
 i3ds::BaslerCamera::getGain() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getGain()";
-  
+
   return raw_to_gain(camera_->GainRaw.GetValue());
 }
 
@@ -402,7 +404,7 @@ double
 i3ds::BaslerCamera::getMaxGain() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getMaxGain()";
-  
+
   return raw_to_gain(camera_->GainRaw.GetMax());
 }
 
@@ -410,7 +412,7 @@ double
 i3ds::BaslerCamera::getMinGain() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getMinGain()";
-  
+
   return raw_to_gain(camera_->GainRaw.GetMin());
 }
 
@@ -418,7 +420,7 @@ void
 i3ds::BaslerCamera::setGain(double gain)
 {
   BOOST_LOG_TRIVIAL(debug) << "setGain()";
-  
+
   camera_->GainRaw.SetValue(gain_to_raw(gain));
 }
 
@@ -435,7 +437,7 @@ bool
 i3ds::BaslerCamera::getAutoGainEnabled() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getAutoGainEnabled()";
-  
+
   return camera_->GainAuto.GetValue() == GainAuto_Continuous;
 }
 
@@ -443,7 +445,7 @@ void
 i3ds::BaslerCamera::setAutoGainEnabled(bool enable)
 {
   BOOST_LOG_TRIVIAL(debug) << "setAutoGainEnabled()";
-  
+
   if (enable)
     {
       // TODO: Handle that some cameras don't support profiles.
@@ -460,7 +462,7 @@ double
 i3ds::BaslerCamera::getAutoGainLimit() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getAutoGainLimit()";
-  
+
   return raw_to_gain(camera_->AutoGainRawUpperLimit.GetValue());
 }
 
@@ -468,7 +470,7 @@ double
 i3ds::BaslerCamera::getMaxAutoGainLimit() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getMaxAutoGainLimit()";
-  
+
   return raw_to_gain(camera_->AutoGainRawUpperLimit.GetMax());
 }
 
@@ -476,7 +478,7 @@ double
 i3ds::BaslerCamera::getMinAutoGainLimit() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getMinAutoGainLimit()";
-  
+
   return raw_to_gain(camera_->AutoGainRawUpperLimit.GetMin());
 }
 
@@ -484,7 +486,7 @@ void
 i3ds::BaslerCamera::setAutoGainLimit(double gain_limit)
 {
   BOOST_LOG_TRIVIAL(debug) << "setAutoGainLimit()";
-  
+
   const int64_t lower = camera_->AutoGainRawLowerLimit.GetMin();
   const int64_t upper = gain_to_raw(gain_limit);
 
