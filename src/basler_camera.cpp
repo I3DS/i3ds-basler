@@ -103,6 +103,7 @@ i3ds::BaslerCamera::Open()
 	}
 	throw;
       }
+    }
   catch (GenICam::GenericException &e)
     {
       BOOST_LOG_TRIVIAL(warning) << e.what();
