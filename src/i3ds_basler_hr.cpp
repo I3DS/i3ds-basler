@@ -83,7 +83,7 @@ int main(int argc, char** argv)
   ("trigger-flash-offset", po::value<int>(&param.flash_offset)->default_value(4200), "Trigger offset for flash (us).")
 
   ("pattern", po::value<bool>(&param.support_pattern)->default_value(false), "Support pattern illumination.")
-  ("trigger-pattern-output", po::value<int>(&param.trigger_source)->default_value(6), "Trigger output for pattern.")
+  ("trigger-pattern-output", po::value<int>(&param.pattern_output)->default_value(6), "Trigger output for pattern.")
   ("trigger-pattern-offset", po::value<int>(&param.pattern_offset)->default_value(0), "Trigger offset for pattern (us).")
 
   ("verbose,v", po::value(&verbosity)->zero_tokens(), "Print verbose output (multiple for more output)")
