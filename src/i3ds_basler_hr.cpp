@@ -45,8 +45,13 @@ void signal_handler(int signum)
 struct counter { int count = 0; };
 void validate(boost::any& v, std::vector<std::string> const& xs, counter*, long)
 {
-    if (v.empty()) v = counter{1};
-    else ++boost::any_cast<counter&>(v).count;
+  if (v.empty()) {
+    counter num;
+    num.count = 1;
+    v = num;
+  } else {
+    ++boost::any_cast<counter&>(v).count;
+  }
 }
 
 int main(int argc, char** argv)
