@@ -42,7 +42,6 @@ endif (NOT(BUILD_EMBEDDED) AND NOT(BUILD_PETALINUX))
 
 set (SRCS
   basler_camera.cpp
-  serial_communicator.cpp
   )
 
 set (LIBS
