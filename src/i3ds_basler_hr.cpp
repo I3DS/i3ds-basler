@@ -66,18 +66,18 @@ int main(int argc, char** argv)
   ("package-size,p", po::value<int>(&param.packet_size)->default_value(8192), "Transport-layer buffersize (MTU).")
   ("package-delay,d", po::value<int>(&param.packet_delay)->default_value(20), "Inter-package delay parameter of camera.")
 
-  ("trigger", po::bool_switch(&param.external_trigger)->default_value(false), "External trigger.")
+  ("trigger", po::value<bool>(&param.external_trigger)->default_value(true), "External trigger.")
   ("trigger-node", po::value<NodeID>(&param.trigger_node)->default_value(20), "Node ID of trigger service.")
   ("trigger-source", po::value<int>(&param.trigger_source)->default_value(1), "Trigger generator for camera.")
   ("trigger-camera-output", po::value<int>(&param.camera_output)->default_value(2), "Trigger output for camera.")
   ("trigger-camera-offset", po::value<int>(&param.camera_offset)->default_value(5000), "Trigger offset for camera (us).")
 
-  ("flash", po::bool_switch(&param.support_flash)->default_value(false), "Support wide-angle flash.")
+  ("flash", po::value<bool>(&param.support_flash)->default_value(false), "Support wide-angle flash.")
   ("flash-node", po::value<NodeID>(&param.flash_node)->default_value(21), "Node ID of flash service.")
   ("trigger-flash-output", po::value<int>(&param.flash_output)->default_value(8), "Trigger output for flash.")
   ("trigger-flash-offset", po::value<int>(&param.flash_offset)->default_value(4200), "Trigger offset for flash (us).")
 
-  ("pattern", po::bool_switch(&param.support_pattern)->default_value(false), "Support pattern illumination.")
+  ("pattern", po::value<bool>(&param.support_pattern)->default_value(false), "Support pattern illumination.")
   ("trigger-pattern-output", po::value<int>(&param.trigger_source)->default_value(6), "Trigger output for pattern.")
   ("trigger-pattern-offset", po::value<int>(&param.pattern_offset)->default_value(0), "Trigger offset for pattern (us).")
 
