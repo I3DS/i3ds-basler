@@ -545,6 +545,14 @@ i3ds::BaslerCamera::SampleLoop()
   // Timeout 4 times a second. The only thing we are waiting for is actually a stopline.
   // Else we always are waiting for a image.
   const int timeout_ms = 2 * period() / 1000;
+  const int max_timeouts = 10;
+
+  const int max_RetriveResult_errors = 10;
+  const int max_grab_errors = 10;
+
+  retrive_errors_ = 0;
+  timeout_counter_ = 0;
+  grab_errors_ = 0;
 
   // Start the grabbing of images.
   camera_->StartGrabbing();
