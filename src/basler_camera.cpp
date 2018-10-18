@@ -594,6 +594,13 @@ i3ds::BaslerCamera::SampleLoop()
               BOOST_LOG_TRIVIAL(warning) << "Error grabbing: "
                                          << ptrGrabResult->GetErrorCode() << " "
                                          << ptrGrabResult->GetErrorDescription();
+
+              grab_errors_ ++;
+	      if( grab_errors_ > max_grab_errors )
+		{
+		  BOOST_LOG_TRIVIAL(warning) << "Too many grab errors in sample loop. Going to failstate!";
+		  set_error_state("Too many grab errors in sample loop. Going to failstate!", true);
+		}
             }
         }
       catch (TimeoutException& e)
