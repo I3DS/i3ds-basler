@@ -562,8 +562,18 @@ i3ds::BaslerCamera::SampleLoop()
       try
         {
           // Wait for an image and then retrieve it.
-          camera_->RetrieveResult(timeout_ms, ptrGrabResult, Pylon::TimeoutHandling_ThrowException);
-
+          bool retrive_success = camera_->RetrieveResult(timeout_ms, ptrGrabResult, Pylon::TimeoutHandling_ThrowException);
+          if ( ! retrive_success )
+            {
+              BOOST_LOG_TRIVIAL(warning) << "RetrieveResult error";
+              retrive_errors_ ++;
+	      if ( retrive_errors_ > max_RetriveResult_errors )
+		{
+		  BOOST_LOG_TRIVIAL(warning) << "max_RetriveResult_error. Going to failstate!";
+		  set_error_state("Too many RetriveResult() errors. Going to failstate!", true);
+		}
+              break;
+            }
           // Image grabbed successfully?
           if (ptrGrabResult->GrabSucceeded())
             {
