@@ -100,6 +100,10 @@ private:
 
   void SampleLoop();
 
+  int retrive_errors_ ;
+  int timeout_counter_ ;
+  int grab_errors_;
+
   std::thread sampler_;
 
   mutable Pylon::CBaslerGigEInstantCamera* camera_;
