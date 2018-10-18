@@ -598,7 +598,13 @@ i3ds::BaslerCamera::SampleLoop()
         }
       catch (TimeoutException& e)
         {
-          BOOST_LOG_TRIVIAL(warning) << "TIMEOUT!";
+          BOOST_LOG_TRIVIAL( debug ) << "Normal timeout one sample!";
+          timeout_counter_ ++;
+          if ( timeout_counter_ > max_timeouts )
+            {
+              BOOST_LOG_TRIVIAL( warning ) << "Too many timeout sample errors. Going to failstate!";
+              set_error_state("Too many timeout sample errors. Going to failstate!", true );
+            }
         }
       catch (GenICam::GenericException& e)
         {
