@@ -574,6 +574,10 @@ i3ds::BaslerCamera::SampleLoop()
               const byte* pImageBuffer = (const byte*) ptrGrabResult->GetBuffer();
 
               send_sample(pImageBuffer, width, height);
+
+              retrive_errors_ = 0;
+              timeout_counter_ = 0;
+              grab_errors_ = 0;
             }
           else
             {
