@@ -96,6 +96,8 @@ private:
   double raw_to_gain(int64_t raw) const;
   int64_t gain_to_raw(double gain) const;
 
+  void set_error_state(const std::string &error_message, const bool dont_throw );
+
   void SampleLoop();
 
   std::thread sampler_;

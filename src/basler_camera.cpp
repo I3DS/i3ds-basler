@@ -513,6 +513,20 @@ i3ds::BaslerCamera::gain_to_raw(SensorGain gain) const
   return (int64_t) 32.0 * pow(10, gain / 20.0);
 }
 
+
+void
+i3ds::BaslerCamera::set_error_state(const std::string &error_message, const bool dont_throw = false )
+{
+  BOOST_LOG_TRIVIAL ( error ) << "set_error_state: Error message: " << error_message;
+
+  set_failure();
+  if ( !dont_throw )
+    {
+      throw i3ds::CommandError ( error_other, error_message );
+    }
+}
+
+
 void
 i3ds::BaslerCamera::SampleLoop()
 {
