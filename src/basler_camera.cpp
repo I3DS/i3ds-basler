@@ -116,6 +116,10 @@ void
 i3ds::BaslerCamera::Close()
 {
   BOOST_LOG_TRIVIAL(info) << "Close()";
+  if (sampler_.joinable())
+    {
+      sampler_.join();
+    }
 
   camera_->Close();
   delete camera_;
