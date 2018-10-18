@@ -608,7 +608,9 @@ i3ds::BaslerCamera::SampleLoop()
         }
       catch (GenICam::GenericException& e)
         {
-          BOOST_LOG_TRIVIAL(warning) << e.what();
+          BOOST_LOG_TRIVIAL( warning ) << e.what();
+          set_error_state("Exception error in sample loop: " + std::string ( e.what() ), true );
+
           break;
         }
     }
