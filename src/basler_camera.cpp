@@ -108,7 +108,7 @@ i3ds::BaslerCamera::Open()
     {
       BOOST_LOG_TRIVIAL(warning) << e.what();
 
-      throw i3ds::CommandError(error_other, "Error connecting to camera");;
+      throw i3ds::CommandError(error_other, "Error connecting to camera" + std::string(e.what()), false);
     }
 }
 
@@ -158,8 +158,7 @@ i3ds::BaslerCamera::Start()
   catch (GenICam::GenericException &e)
     {
       BOOST_LOG_TRIVIAL(warning) << e.what();
-
-      throw i3ds::CommandError(error_other, "Error starting camera");;
+      set_error_state("Error starting camera: " + std::string(e.what()), false);
     }
 
   sampler_ = std::thread(&i3ds::BaslerCamera::SampleLoop, this);
@@ -168,7 +167,7 @@ i3ds::BaslerCamera::Start()
 void
 i3ds::BaslerCamera::Stop()
 {
-  BOOST_LOG_TRIVIAL(info) << "Stop()";
+  BOOST_LOG_TRIVIAL(debug) << "Stop()";
 
   try
     {
@@ -177,6 +176,7 @@ i3ds::BaslerCamera::Stop()
   catch (GenICam::GenericException &e)
     {
       BOOST_LOG_TRIVIAL(warning) << e.what();
+      set_error_state("Error stopping camera: " + std::string(e.what()), false);
     }
 
   if (sampler_.joinable())
