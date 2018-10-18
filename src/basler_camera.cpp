@@ -136,7 +136,7 @@ i3ds::BaslerCamera::Start()
     {
       if (param_.external_trigger)
 	{
-	  BOOST_LOG_TRIVIAL(info) << "Setting external trigger values";
+	  BOOST_LOG_TRIVIAL(debug) << "Setting external trigger values";
 
 	  camera_->AcquisitionFrameRateEnable.SetValue(false);
 
@@ -147,7 +147,7 @@ i3ds::BaslerCamera::Start()
 	}
       else
 	{
-	  BOOST_LOG_TRIVIAL(info) << "Setting internal trigger values";
+	  BOOST_LOG_TRIVIAL(debug) << "Setting internal trigger values";
 
 	  camera_->TriggerMode.SetValue(TriggerMode_Off);
 	  camera_->AcquisitionFrameRateEnable.SetValue(true);
@@ -188,7 +188,7 @@ i3ds::BaslerCamera::Stop()
 bool
 i3ds::BaslerCamera::setInternalTrigger(int64_t period_us)
 {
-  BOOST_LOG_TRIVIAL(info) << "setInternalTrigger()";
+  BOOST_LOG_TRIVIAL(debug) << "setInternalTrigger()";
 
   const float rate = 1.e6 / period_us;
 
@@ -200,7 +200,7 @@ i3ds::BaslerCamera::setInternalTrigger(int64_t period_us)
     }
   catch (GenICam::GenericException &e)
     {
-      BOOST_LOG_TRIVIAL(error) << "Frame rate is out of range: " << rate;
+      BOOST_LOG_TRIVIAL(warning) << "Frame rate is out of range: " << rate;
 
       return false;
     }
