@@ -221,7 +221,7 @@ i3ds::BaslerCamera::getSensorHeight() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getSensorHeight()";
 
-  return camera_->Height.GetMax();
+  return camera_->SensorHeight.GetValue();
 }
 
 bool
