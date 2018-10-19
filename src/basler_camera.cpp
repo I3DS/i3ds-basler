@@ -108,7 +108,7 @@ i3ds::BaslerCamera::Open()
     {
       BOOST_LOG_TRIVIAL(warning) << e.what();
 
-      throw i3ds::CommandError(error_other, "Error connecting to camera" + std::string(e.what()), false);
+      throw i3ds::CommandError(error_other, "Error connecting to camera" + std::string(e.what()));
     }
 }
 
