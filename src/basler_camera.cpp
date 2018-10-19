@@ -213,7 +213,7 @@ i3ds::BaslerCamera::getSensorWidth() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getSensorWidth()";
 
-  return camera_->Width.GetMax();
+  return camera_->SensorWidth.GetValue();
 }
 
 int64_t
