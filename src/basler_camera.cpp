@@ -655,6 +655,7 @@ i3ds::BaslerCamera::SampleLoop()
             {
               BOOST_LOG_TRIVIAL( warning ) << "Too many timeout sample errors. Going to failstate!";
               set_error_state("Too many timeout sample errors. Going to failstate!", true );
+              break;
             }
         }
       catch (GenICam::GenericException& e)
