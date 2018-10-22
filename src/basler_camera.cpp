@@ -194,22 +194,62 @@ i3ds::BaslerCamera::setInternalTrigger(int64_t period_us)
 {
   BOOST_LOG_TRIVIAL(debug) << "setInternalTrigger()";
 
-  const float rate = 1.e6 / period_us;
+  /* Algorithm for testing if framerate is supported :
+     * if one sets AcquisitionFrameRateAbs, then ResultingFrameRateAbs will give you the what rate you acctually will get
+     *
+     * Algorithm:
+     * 1. Store old AcquisitionFrameRateAbs
+     * 2. Set Wanted value for  AcquisitionFrameRateAbs
+     * 3. Read out ResultingFrameRateAbs
+     * 4. Set Back old AcquisitionFrameRateAbs
+     * 5. Check if ResultingFrameRateAbs is close to AcquisitionFrameRateAbs, then ok
+     * (Remember Camera is operating i Hertz second (float) , but we get inn period in i us int64 )
+     */
 
-  camera_->AcquisitionFrameRateEnable.SetValue(true);
+    const float wanted_rate_in_Hz = 1.e6 / period_us;// Convert to Hz
 
-  try
-    {
-      camera_->AcquisitionFrameRateAbs.SetValue(rate);
-    }
-  catch (GenICam::GenericException &e)
-    {
-      BOOST_LOG_TRIVIAL(warning) << "Frame rate is out of range: " << rate;
+    // Must be enabled to do calculating
+    camera_->AcquisitionFrameRateEnable.SetValue(true);
 
-      return false;
-    }
+    // 1. Remember the old value
+    const float old_sample_rate_in_Hz = camera_->AcquisitionFrameRateAbs.GetValue();
 
-  return true;
+    // 2.
+    BOOST_LOG_TRIVIAL(trace) << "Testing frame rate: " << wanted_rate_in_Hz << "Hz";
+    try
+      {
+        camera_->AcquisitionFrameRateAbs.SetValue(wanted_rate_in_Hz);
+      }
+    catch (GenICam::GenericException &e)    // Error handling.
+      {
+        BOOST_LOG_TRIVIAL(trace)  << "An exception occurred." << e.GetDescription();
+        BOOST_LOG_TRIVIAL(trace) << "frame rate is probably out of range: " << wanted_rate_in_Hz;
+        return false;
+      }
+
+    //3.
+    const float resulting_rate_in_Hz = camera_->ResultingFrameRateAbs.GetValue();
+    BOOST_LOG_TRIVIAL(trace) << "Reading resulting frame rate  (ResultingFrameRateAbs)"
+                            << resulting_rate_in_Hz << "Hz";
+
+    //4.
+    //BOOST_LOG_TRIVIAL(trace) << "Setting back old sample rate";
+    //camera_->AcquisitionFrameRateAbs.SetValue(old_sample_rate_in_Hz);
+
+    //.5 Accepting new rate if result is within 1Hz of wanted_frequency
+    if (abs(wanted_rate_in_Hz - resulting_rate_in_Hz) < 1.)
+      {
+	BOOST_LOG_TRIVIAL(trace) << "Test of sample rate yields OK. Storing and using it";
+	return true;
+      }
+    else
+      {
+	BOOST_LOG_TRIVIAL(trace) << "Test of sample rate NOT OK. Do not keep it";
+	BOOST_LOG_TRIVIAL(trace) << "Setting back old sample rate";
+	camera_->AcquisitionFrameRateAbs.SetValue(old_sample_rate_in_Hz);
+
+	return false;
+      }
 }
 
 int64_t
