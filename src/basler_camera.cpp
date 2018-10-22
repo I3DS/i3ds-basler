@@ -176,6 +176,10 @@ i3ds::BaslerCamera::Stop()
   catch (GenICam::GenericException &e)
     {
       BOOST_LOG_TRIVIAL(warning) << e.what();
+      if (sampler_.joinable())
+	{
+	  sampler_.join();
+	}
       set_error_state("Error stopping camera: " + std::string(e.what()), false);
     }
 
