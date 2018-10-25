@@ -479,7 +479,14 @@ i3ds::BaslerCamera::isAutoGainSupported() const
   BOOST_LOG_TRIVIAL(debug) << "isAutoGainSupported()";
 
   // TODO: Handle that some cameras don't support auto gain and shutter at same time.
+
+#ifdef SCOUT
+  // TODO: Scout camera has no autogain
   return false;
+#else
+  return true; // Normally used. Used for basler HR camera
+#endif
+
 }
 
 bool
