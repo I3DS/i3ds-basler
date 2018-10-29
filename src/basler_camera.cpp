@@ -542,11 +542,10 @@ void
 i3ds::BaslerCamera::setAutoGainLimit(double gain_limit)
 {
   BOOST_LOG_TRIVIAL(debug) << "setAutoGainLimit()";
-
   const int64_t lower = camera_->AutoGainRawLowerLimit.GetMin();
-  const int64_t upper = gain_to_raw(gain_limit);
-
+  // Setting lower limit low first such that one does not get a exception if the lower limit is higher than requested high limit.
   camera_->AutoGainRawLowerLimit.SetValue(lower);
+  const int64_t upper = gain_to_raw(gain_limit);
   camera_->AutoGainRawUpperLimit.SetValue(upper);
 }
 
