@@ -108,7 +108,7 @@ i3ds::BaslerCamera::Open()
     {
       BOOST_LOG_TRIVIAL(warning) << e.what();
 
-      throw i3ds::CommandError(error_other, "Error connecting to camera");;
+      throw i3ds::CommandError(error_other, "Error connecting to camera: " + std::string(e.what()));
     }
 }
 
@@ -116,6 +116,10 @@ void
 i3ds::BaslerCamera::Close()
 {
   BOOST_LOG_TRIVIAL(info) << "Close()";
+  if (sampler_.joinable())
+    {
+      sampler_.join();
+    }
 
   camera_->Close();
   delete camera_;
@@ -132,7 +136,7 @@ i3ds::BaslerCamera::Start()
     {
       if (param_.external_trigger)
 	{
-	  BOOST_LOG_TRIVIAL(info) << "Setting external trigger values";
+	  BOOST_LOG_TRIVIAL(debug) << "Setting external trigger values";
 
 	  camera_->AcquisitionFrameRateEnable.SetValue(false);
 
@@ -143,7 +147,7 @@ i3ds::BaslerCamera::Start()
 	}
       else
 	{
-	  BOOST_LOG_TRIVIAL(info) << "Setting internal trigger values";
+	  BOOST_LOG_TRIVIAL(debug) << "Setting internal trigger values";
 
 	  camera_->TriggerMode.SetValue(TriggerMode_Off);
 	  camera_->AcquisitionFrameRateEnable.SetValue(true);
@@ -154,8 +158,7 @@ i3ds::BaslerCamera::Start()
   catch (GenICam::GenericException &e)
     {
       BOOST_LOG_TRIVIAL(warning) << e.what();
-
-      throw i3ds::CommandError(error_other, "Error starting camera");;
+      set_error_state("Error starting camera: " + std::string(e.what()), false);
     }
 
   sampler_ = std::thread(&i3ds::BaslerCamera::SampleLoop, this);
@@ -164,7 +167,7 @@ i3ds::BaslerCamera::Start()
 void
 i3ds::BaslerCamera::Stop()
 {
-  BOOST_LOG_TRIVIAL(info) << "Stop()";
+  BOOST_LOG_TRIVIAL(debug) << "Stop()";
 
   try
     {
@@ -173,6 +176,11 @@ i3ds::BaslerCamera::Stop()
   catch (GenICam::GenericException &e)
     {
       BOOST_LOG_TRIVIAL(warning) << e.what();
+      if (sampler_.joinable())
+	{
+	  sampler_.join();
+	}
+      set_error_state("Error stopping camera: " + std::string(e.what()), false);
     }
 
   if (sampler_.joinable())
@@ -184,24 +192,64 @@ i3ds::BaslerCamera::Stop()
 bool
 i3ds::BaslerCamera::setInternalTrigger(int64_t period_us)
 {
-  BOOST_LOG_TRIVIAL(info) << "setInternalTrigger()";
+  BOOST_LOG_TRIVIAL(debug) << "setInternalTrigger()";
 
-  const float rate = 1.e6 / period_us;
+  /* Algorithm for testing if framerate is supported :
+     * if one sets AcquisitionFrameRateAbs, then ResultingFrameRateAbs will give you the what rate you acctually will get
+     *
+     * Algorithm:
+     * 1. Store old AcquisitionFrameRateAbs
+     * 2. Set Wanted value for  AcquisitionFrameRateAbs
+     * 3. Read out ResultingFrameRateAbs
+     * 4. Set Back old AcquisitionFrameRateAbs
+     * 5. Check if ResultingFrameRateAbs is close to AcquisitionFrameRateAbs, then ok
+     * (Remember Camera is operating i Hertz second (float) , but we get inn period in i us int64 )
+     */
 
-  camera_->AcquisitionFrameRateEnable.SetValue(true);
+    const float wanted_rate_in_Hz = 1.e6 / period_us;// Convert to Hz
 
-  try
-    {
-      camera_->AcquisitionFrameRateAbs.SetValue(rate);
-    }
-  catch (GenICam::GenericException &e)
-    {
-      BOOST_LOG_TRIVIAL(error) << "Frame rate is out of range: " << rate;
+    // Must be enabled to do calculating
+    camera_->AcquisitionFrameRateEnable.SetValue(true);
 
-      return false;
-    }
+    // 1. Remember the old value
+    const float old_sample_rate_in_Hz = camera_->AcquisitionFrameRateAbs.GetValue();
 
-  return true;
+    // 2.
+    BOOST_LOG_TRIVIAL(trace) << "Testing frame rate: " << wanted_rate_in_Hz << "Hz";
+    try
+      {
+        camera_->AcquisitionFrameRateAbs.SetValue(wanted_rate_in_Hz);
+      }
+    catch (GenICam::GenericException &e)    // Error handling.
+      {
+        BOOST_LOG_TRIVIAL(trace)  << "An exception occurred." << e.GetDescription();
+        BOOST_LOG_TRIVIAL(trace) << "frame rate is probably out of range: " << wanted_rate_in_Hz;
+        return false;
+      }
+
+    //3.
+    const float resulting_rate_in_Hz = camera_->ResultingFrameRateAbs.GetValue();
+    BOOST_LOG_TRIVIAL(trace) << "Reading resulting frame rate  (ResultingFrameRateAbs)"
+                            << resulting_rate_in_Hz << "Hz";
+
+    //4.
+    //BOOST_LOG_TRIVIAL(trace) << "Setting back old sample rate";
+    //camera_->AcquisitionFrameRateAbs.SetValue(old_sample_rate_in_Hz);
+
+    //.5 Accepting new rate if result is within 1Hz of wanted_frequency
+    if (abs(wanted_rate_in_Hz - resulting_rate_in_Hz) < 1.)
+      {
+	BOOST_LOG_TRIVIAL(trace) << "Test of sample rate yields OK. Storing and using it";
+	return true;
+      }
+    else
+      {
+	BOOST_LOG_TRIVIAL(trace) << "Test of sample rate NOT OK. Do not keep it";
+	BOOST_LOG_TRIVIAL(trace) << "Setting back old sample rate";
+	camera_->AcquisitionFrameRateAbs.SetValue(old_sample_rate_in_Hz);
+
+	return false;
+      }
 }
 
 int64_t
@@ -209,7 +257,7 @@ i3ds::BaslerCamera::getSensorWidth() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getSensorWidth()";
 
-  return camera_->Width.GetMax();
+  return camera_->SensorWidth.GetValue();
 }
 
 int64_t
@@ -217,7 +265,7 @@ i3ds::BaslerCamera::getSensorHeight() const
 {
   BOOST_LOG_TRIVIAL(debug) << "getSensorHeight()";
 
-  return camera_->Height.GetMax();
+  return camera_->SensorHeight.GetValue();
 }
 
 bool
@@ -431,7 +479,14 @@ i3ds::BaslerCamera::isAutoGainSupported() const
   BOOST_LOG_TRIVIAL(debug) << "isAutoGainSupported()";
 
   // TODO: Handle that some cameras don't support auto gain and shutter at same time.
+
+#ifdef SCOUT
+  // TODO: Scout camera has no autogain
   return false;
+#else
+  return true; // Normally used. Used for basler HR camera
+#endif
+
 }
 
 bool
@@ -487,11 +542,10 @@ void
 i3ds::BaslerCamera::setAutoGainLimit(double gain_limit)
 {
   BOOST_LOG_TRIVIAL(debug) << "setAutoGainLimit()";
-
   const int64_t lower = camera_->AutoGainRawLowerLimit.GetMin();
-  const int64_t upper = gain_to_raw(gain_limit);
-
+  // Setting lower limit low first such that one does not get a exception if the lower limit is higher than requested high limit.
   camera_->AutoGainRawLowerLimit.SetValue(lower);
+  const int64_t upper = gain_to_raw(gain_limit);
   camera_->AutoGainRawUpperLimit.SetValue(upper);
 }
 
@@ -508,6 +562,20 @@ i3ds::BaslerCamera::gain_to_raw(SensorGain gain) const
   // TODO: Camera specific for ACE acA2040-25gmNIR.
   return (int64_t) 32.0 * pow(10, gain / 20.0);
 }
+
+
+void
+i3ds::BaslerCamera::set_error_state(const std::string &error_message, const bool dont_throw = false )
+{
+  BOOST_LOG_TRIVIAL ( error ) << "set_error_state: Error message: " << error_message;
+
+  set_failure();
+  if ( !dont_throw )
+    {
+      throw i3ds::CommandError ( error_other, error_message );
+    }
+}
+
 
 void
 i3ds::BaslerCamera::SampleLoop()
@@ -526,7 +594,15 @@ i3ds::BaslerCamera::SampleLoop()
 
   // Timeout 4 times a second. The only thing we are waiting for is actually a stopline.
   // Else we always are waiting for a image.
-  const int timeout_ms = 250;
+  const int timeout_ms = 2 * period() / 1000;
+  const int max_timeouts = 10;
+
+  const int max_RetriveResult_errors = 10;
+  const int max_grab_errors = 10;
+
+  retrive_errors_ = 0;
+  timeout_counter_ = 0;
+  grab_errors_ = 0;
 
   // Start the grabbing of images.
   camera_->StartGrabbing();
@@ -536,8 +612,18 @@ i3ds::BaslerCamera::SampleLoop()
       try
         {
           // Wait for an image and then retrieve it.
-          camera_->RetrieveResult(timeout_ms, ptrGrabResult, Pylon::TimeoutHandling_ThrowException);
-
+          bool retrive_success = camera_->RetrieveResult(timeout_ms, ptrGrabResult, Pylon::TimeoutHandling_ThrowException);
+          if ( ! retrive_success )
+            {
+              BOOST_LOG_TRIVIAL(warning) << "RetrieveResult error";
+              retrive_errors_ ++;
+	      if ( retrive_errors_ > max_RetriveResult_errors )
+		{
+		  BOOST_LOG_TRIVIAL(warning) << "max_RetriveResult_error. Going to failstate!";
+		  set_error_state("Too many RetriveResult() errors. Going to failstate!", true);
+		}
+              break;
+            }
           // Image grabbed successfully?
           if (ptrGrabResult->GrabSucceeded())
             {
@@ -548,21 +634,41 @@ i3ds::BaslerCamera::SampleLoop()
               const byte* pImageBuffer = (const byte*) ptrGrabResult->GetBuffer();
 
               send_sample(pImageBuffer, width, height);
+
+              retrive_errors_ = 0;
+              timeout_counter_ = 0;
+              grab_errors_ = 0;
             }
           else
             {
               BOOST_LOG_TRIVIAL(warning) << "Error grabbing: "
                                          << ptrGrabResult->GetErrorCode() << " "
                                          << ptrGrabResult->GetErrorDescription();
+
+              grab_errors_ ++;
+	      if( grab_errors_ > max_grab_errors )
+		{
+		  BOOST_LOG_TRIVIAL(warning) << "Too many grab errors in sample loop. Going to failstate!";
+		  set_error_state("Too many grab errors in sample loop. Going to failstate!", true);
+		}
             }
         }
       catch (TimeoutException& e)
         {
-          BOOST_LOG_TRIVIAL(warning) << "TIMEOUT!";
+          BOOST_LOG_TRIVIAL( debug ) << "Normal timeout one sample!";
+          timeout_counter_ ++;
+          if ( timeout_counter_ > max_timeouts )
+            {
+              BOOST_LOG_TRIVIAL( warning ) << "Too many timeout sample errors. Going to failstate!";
+              set_error_state("Too many timeout sample errors. Going to failstate!", true );
+              break;
+            }
         }
       catch (GenICam::GenericException& e)
         {
-          BOOST_LOG_TRIVIAL(warning) << e.what();
+          BOOST_LOG_TRIVIAL( warning ) << e.what();
+          set_error_state("Exception error in sample loop: " + std::string ( e.what() ), true );
+
           break;
         }
     }
