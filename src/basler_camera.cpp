@@ -45,6 +45,7 @@ i3ds::BaslerCamera::Open()
   BOOST_LOG_TRIVIAL(info) << "Open()";
 
   camera_ = nullptr;
+
   try
     {
       Pylon::CDeviceInfo info;
@@ -74,35 +75,37 @@ i3ds::BaslerCamera::Open()
       BOOST_LOG_TRIVIAL(info) << "packet_delay: " << param_.packet_delay;
 
       // Close camera if error is later than this.
-      try {
-	// Set streaming options.
-	camera_->GevSCPSPacketSize.SetValue(param_.packet_size);
-	camera_->GevSCPD.SetValue(param_.packet_delay);
+      try
+        {
+          // Set streaming options.
+          camera_->GevSCPSPacketSize.SetValue(param_.packet_size);
+          camera_->GevSCPD.SetValue(param_.packet_delay);
 
-	// Set pixel format depending on data depth.
-	switch (param_.data_depth)
-	{
-	case 12:
-	  BOOST_LOG_TRIVIAL(info) << "Pixel format: Mono12";
-	  camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono12);
-	  break;
+          // Set pixel format depending on data depth.
+          switch (param_.data_depth)
+            {
+            case 12:
+              BOOST_LOG_TRIVIAL(info) << "Pixel format: Mono12";
+              camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono12);
+              break;
 
-	case 8:
-	  BOOST_LOG_TRIVIAL(info) << "Pixel format: Mono8";
-	  camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono8);
-	  break;
+            case 8:
+              BOOST_LOG_TRIVIAL(info) << "Pixel format: Mono8";
+              camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono8);
+              break;
 
-	default:
-	  BOOST_LOG_TRIVIAL(error) << "Unsupported data depth: " << param_.data_depth;
-	}
-      }
+            default:
+              BOOST_LOG_TRIVIAL(error) << "Unsupported data depth: " << param_.data_depth;
+            }
+        }
       catch (GenICam::GenericException &e)
-      {
-	if (camera_) {
-	  camera_->Close();
-	}
-	throw;
-      }
+        {
+          if (camera_)
+            {
+              camera_->Close();
+            }
+          throw;
+        }
     }
   catch (GenICam::GenericException &e)
     {
@@ -116,6 +119,7 @@ void
 i3ds::BaslerCamera::Close()
 {
   BOOST_LOG_TRIVIAL(info) << "Close()";
+
   if (sampler_.joinable())
     {
       sampler_.join();
@@ -135,25 +139,25 @@ i3ds::BaslerCamera::Start()
   try
     {
       if (param_.external_trigger)
-	{
-	  BOOST_LOG_TRIVIAL(debug) << "Setting external trigger values";
+        {
+          BOOST_LOG_TRIVIAL(debug) << "Setting external trigger values";
 
-	  camera_->AcquisitionFrameRateEnable.SetValue(false);
+          camera_->AcquisitionFrameRateEnable.SetValue(false);
 
-	  camera_->TriggerSelector.SetValue(TriggerSelector_FrameStart);
-	  camera_->TriggerMode.SetValue(TriggerMode_On);
-	  camera_->TriggerSource.SetValue(TriggerSource_Line1);
-	  camera_->ExposureMode.SetValue(ExposureMode_Timed);
-	}
+          camera_->TriggerSelector.SetValue(TriggerSelector_FrameStart);
+          camera_->TriggerMode.SetValue(TriggerMode_On);
+          camera_->TriggerSource.SetValue(TriggerSource_Line1);
+          camera_->ExposureMode.SetValue(ExposureMode_Timed);
+        }
       else
-	{
-	  BOOST_LOG_TRIVIAL(debug) << "Setting internal trigger values";
+        {
+          BOOST_LOG_TRIVIAL(debug) << "Setting internal trigger values";
 
-	  camera_->TriggerMode.SetValue(TriggerMode_Off);
-	  camera_->AcquisitionFrameRateEnable.SetValue(true);
-	  camera_->AcquisitionMode.SetValue(AcquisitionMode_Continuous);
-	  camera_->AcquisitionFrameRateAbs.SetValue(1.0e6 / period());
-	}
+          camera_->TriggerMode.SetValue(TriggerMode_Off);
+          camera_->AcquisitionFrameRateEnable.SetValue(true);
+          camera_->AcquisitionMode.SetValue(AcquisitionMode_Continuous);
+          camera_->AcquisitionFrameRateAbs.SetValue(1.0e6 / period());
+        }
     }
   catch (GenICam::GenericException &e)
     {
@@ -177,9 +181,9 @@ i3ds::BaslerCamera::Stop()
     {
       BOOST_LOG_TRIVIAL(warning) << e.what();
       if (sampler_.joinable())
-	{
-	  sampler_.join();
-	}
+        {
+          sampler_.join();
+        }
       set_error_state("Error stopping camera: " + std::string(e.what()), false);
     }
 
@@ -206,50 +210,50 @@ i3ds::BaslerCamera::setInternalTrigger(int64_t period_us)
      * (Remember Camera is operating i Hertz second (float) , but we get inn period in i us int64 )
      */
 
-    const float wanted_rate_in_Hz = 1.e6 / period_us;// Convert to Hz
+  const float wanted_rate_in_Hz = 1.e6 / period_us;// Convert to Hz
 
-    // Must be enabled to do calculating
-    camera_->AcquisitionFrameRateEnable.SetValue(true);
+  // Must be enabled to do calculating
+  camera_->AcquisitionFrameRateEnable.SetValue(true);
 
-    // 1. Remember the old value
-    const float old_sample_rate_in_Hz = camera_->AcquisitionFrameRateAbs.GetValue();
+  // 1. Remember the old value
+  const float old_sample_rate_in_Hz = camera_->AcquisitionFrameRateAbs.GetValue();
 
-    // 2.
-    BOOST_LOG_TRIVIAL(trace) << "Testing frame rate: " << wanted_rate_in_Hz << "Hz";
-    try
-      {
-        camera_->AcquisitionFrameRateAbs.SetValue(wanted_rate_in_Hz);
-      }
-    catch (GenICam::GenericException &e)    // Error handling.
-      {
-        BOOST_LOG_TRIVIAL(trace)  << "An exception occurred." << e.GetDescription();
-        BOOST_LOG_TRIVIAL(trace) << "frame rate is probably out of range: " << wanted_rate_in_Hz;
-        return false;
-      }
+  // 2.
+  BOOST_LOG_TRIVIAL(trace) << "Testing frame rate: " << wanted_rate_in_Hz << "Hz";
+  try
+    {
+      camera_->AcquisitionFrameRateAbs.SetValue(wanted_rate_in_Hz);
+    }
+  catch (GenICam::GenericException &e)    // Error handling.
+    {
+      BOOST_LOG_TRIVIAL(trace)  << "An exception occurred." << e.GetDescription();
+      BOOST_LOG_TRIVIAL(trace) << "frame rate is probably out of range: " << wanted_rate_in_Hz;
+      return false;
+    }
 
-    //3.
-    const float resulting_rate_in_Hz = camera_->ResultingFrameRateAbs.GetValue();
-    BOOST_LOG_TRIVIAL(trace) << "Reading resulting frame rate  (ResultingFrameRateAbs)"
-                            << resulting_rate_in_Hz << "Hz";
+  //3.
+  const float resulting_rate_in_Hz = camera_->ResultingFrameRateAbs.GetValue();
+  BOOST_LOG_TRIVIAL(trace) << "Reading resulting frame rate  (ResultingFrameRateAbs)"
+                           << resulting_rate_in_Hz << "Hz";
 
-    //4.
-    //BOOST_LOG_TRIVIAL(trace) << "Setting back old sample rate";
-    //camera_->AcquisitionFrameRateAbs.SetValue(old_sample_rate_in_Hz);
+  //4.
+  //BOOST_LOG_TRIVIAL(trace) << "Setting back old sample rate";
+  //camera_->AcquisitionFrameRateAbs.SetValue(old_sample_rate_in_Hz);
 
-    //.5 Accepting new rate if result is within 1Hz of wanted_frequency
-    if (abs(wanted_rate_in_Hz - resulting_rate_in_Hz) < 1.)
-      {
-	BOOST_LOG_TRIVIAL(trace) << "Test of sample rate yields OK. Storing and using it";
-	return true;
-      }
-    else
-      {
-	BOOST_LOG_TRIVIAL(trace) << "Test of sample rate NOT OK. Do not keep it";
-	BOOST_LOG_TRIVIAL(trace) << "Setting back old sample rate";
-	camera_->AcquisitionFrameRateAbs.SetValue(old_sample_rate_in_Hz);
+  //.5 Accepting new rate if result is within 1Hz of wanted_frequency
+  if (abs(wanted_rate_in_Hz - resulting_rate_in_Hz) < 1.)
+    {
+      BOOST_LOG_TRIVIAL(trace) << "Test of sample rate yields OK. Storing and using it";
+      return true;
+    }
+  else
+    {
+      BOOST_LOG_TRIVIAL(trace) << "Test of sample rate NOT OK. Do not keep it";
+      BOOST_LOG_TRIVIAL(trace) << "Setting back old sample rate";
+      camera_->AcquisitionFrameRateAbs.SetValue(old_sample_rate_in_Hz);
 
-	return false;
-      }
+      return false;
+    }
 }
 
 int64_t
@@ -567,12 +571,13 @@ i3ds::BaslerCamera::gain_to_raw(SensorGain gain) const
 void
 i3ds::BaslerCamera::set_error_state(const std::string &error_message, const bool dont_throw = false )
 {
-  BOOST_LOG_TRIVIAL ( error ) << "set_error_state: Error message: " << error_message;
+  BOOST_LOG_TRIVIAL(error) << "set_error_state: Error message: " << error_message;
 
   set_failure();
-  if ( !dont_throw )
+
+  if (!dont_throw)
     {
-      throw i3ds::CommandError ( error_other, error_message );
+      throw i3ds::CommandError(error_other, error_message);
     }
 }
 
@@ -613,17 +618,22 @@ i3ds::BaslerCamera::SampleLoop()
         {
           // Wait for an image and then retrieve it.
           bool retrive_success = camera_->RetrieveResult(timeout_ms, ptrGrabResult, Pylon::TimeoutHandling_ThrowException);
-          if ( ! retrive_success )
+
+          if (!retrive_success)
             {
               BOOST_LOG_TRIVIAL(warning) << "RetrieveResult error";
+
               retrive_errors_ ++;
-	      if ( retrive_errors_ > max_RetriveResult_errors )
-		{
-		  BOOST_LOG_TRIVIAL(warning) << "max_RetriveResult_error. Going to failstate!";
-		  set_error_state("Too many RetriveResult() errors. Going to failstate!", true);
-		}
+
+              if (retrive_errors_ > max_RetriveResult_errors)
+                {
+                  BOOST_LOG_TRIVIAL(warning) << "max_RetriveResult_error. Going to failstate!";
+                  set_error_state("Too many RetriveResult() errors. Going to failstate!", true);
+                }
+
               break;
             }
+
           // Image grabbed successfully?
           if (ptrGrabResult->GrabSucceeded())
             {
@@ -646,27 +656,30 @@ i3ds::BaslerCamera::SampleLoop()
                                          << ptrGrabResult->GetErrorDescription();
 
               grab_errors_ ++;
-	      if( grab_errors_ > max_grab_errors )
-		{
-		  BOOST_LOG_TRIVIAL(warning) << "Too many grab errors in sample loop. Going to failstate!";
-		  set_error_state("Too many grab errors in sample loop. Going to failstate!", true);
-		}
+
+              if (grab_errors_ > max_grab_errors)
+                {
+                  BOOST_LOG_TRIVIAL(warning) << "Too many grab errors in sample loop. Going to failstate!";
+                  set_error_state("Too many grab errors in sample loop. Going to failstate!", true);
+                }
             }
         }
       catch (TimeoutException& e)
         {
           BOOST_LOG_TRIVIAL( debug ) << "Normal timeout one sample!";
+
           timeout_counter_ ++;
-          if ( timeout_counter_ > max_timeouts )
+
+          if (timeout_counter_ > max_timeouts)
             {
-              BOOST_LOG_TRIVIAL( warning ) << "Too many timeout sample errors. Going to failstate!";
+              BOOST_LOG_TRIVIAL(warning) << "Too many timeout sample errors. Going to failstate!";
               set_error_state("Too many timeout sample errors. Going to failstate!", true );
               break;
             }
         }
       catch (GenICam::GenericException& e)
         {
-          BOOST_LOG_TRIVIAL( warning ) << e.what();
+          BOOST_LOG_TRIVIAL(warning) << e.what();
           set_error_state("Exception error in sample loop: " + std::string ( e.what() ), true );
 
           break;
