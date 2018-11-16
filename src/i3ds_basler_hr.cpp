@@ -71,7 +71,7 @@ int main(int argc, char** argv)
   ("package-size,p", po::value<int>(&param.packet_size)->default_value(8192), "Transport-layer buffersize (MTU).")
   ("package-delay,d", po::value<int>(&param.packet_delay)->default_value(20), "Inter-package delay parameter of camera.")
 
-  ("trigger", po::value<bool>(&param.external_trigger)->default_value(true), "External trigger.")
+  ("trigger", po::value<bool>(&param.external_trigger)->default_value(true), "Enable external trigger.")
   ("trigger-node", po::value<NodeID>(&param.trigger_node)->default_value(20), "Node ID of trigger service.")
   ("trigger-source", po::value<int>(&param.trigger_source)->default_value(1), "Trigger generator for camera.")
   ("trigger-camera-output", po::value<int>(&param.camera_output)->default_value(2), "Trigger output for camera.")
@@ -88,7 +88,7 @@ int main(int argc, char** argv)
 
   ("verbose,v", po::value(&verbosity)->zero_tokens(), "Print verbose output (multiple for more output)")
   ("quiet,q", "Quiet ouput")
-  ("print", "Print the camera configuration")
+  ("print,p", "Print the camera configuration")
   ;
 
   po::variables_map vm;
@@ -105,14 +105,18 @@ int main(int argc, char** argv)
     {
       logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::warning);
     }
-  else if (verbosity.count == 1) {
-    logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::debug);
-  } else if (verbosity.count > 1)
-  {
-    logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::trace);
-  } else {
-    logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::info);
-  }
+  else if (verbosity.count == 1)
+    {
+      logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::debug);
+    }
+  else if (verbosity.count > 1)
+    {
+      logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::trace);
+    }
+  else
+    {
+      logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::info);
+    }
 
   BOOST_LOG_TRIVIAL(info) << "Node ID:     " << node_id;
   BOOST_LOG_TRIVIAL(info) << "Camera name: " << param.camera_name;
