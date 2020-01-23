@@ -661,10 +661,11 @@ i3ds::BaslerCamera::SampleLoop()
                 {
                   BOOST_LOG_TRIVIAL(warning) << "Too many grab errors in sample loop. Going to failstate!";
                   set_error_state("Too many grab errors in sample loop. Going to failstate!", true);
+                  break;
                 }
             }
         }
-      catch (TimeoutException& e)
+      catch (Pylon::TimeoutException& e)
         {
           BOOST_LOG_TRIVIAL( debug ) << "Normal timeout one sample!";
 

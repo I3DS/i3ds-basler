@@ -46,6 +46,7 @@ set (SRCS
 
 set (LIBS
   i3ds
+  i3ds_clients
   zmq
   pthread
   ${BASLER_HR_LDLIBS}
