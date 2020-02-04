@@ -27,7 +27,7 @@ class BaslerCamera : public GigECamera
 {
 public:
 
-  BaslerCamera(Context::Ptr context, NodeID node, Parameters param);
+  BaslerCamera(Context::Ptr context, i3ds_asn1::NodeID node, Parameters param);
 
   virtual ~BaslerCamera();
 

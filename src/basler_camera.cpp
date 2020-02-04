@@ -22,7 +22,7 @@ namespace logging = boost::log;
 
 using namespace Basler_GigECamera;
 
-i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, NodeID node, Parameters param)
+i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, i3ds_asn1::NodeID node, Parameters param)
   : GigECamera(context, node, param)
 {
   camera_ = nullptr;
@@ -111,7 +111,7 @@ i3ds::BaslerCamera::Open()
     {
       BOOST_LOG_TRIVIAL(warning) << e.what();
 
-      throw i3ds::CommandError(error_other, "Error connecting to camera: " + std::string(e.what()));
+      throw i3ds::CommandError(i3ds_asn1::error_other, "Error connecting to camera: " + std::string(e.what()));
     }
 }
 
@@ -561,7 +561,7 @@ i3ds::BaslerCamera::raw_to_gain(int64_t raw) const
 }
 
 int64_t
-i3ds::BaslerCamera::gain_to_raw(SensorGain gain) const
+i3ds::BaslerCamera::gain_to_raw(i3ds_asn1::SensorGain gain) const
 {
   // TODO: Camera specific for ACE acA2040-25gmNIR.
   return (int64_t) 32.0 * pow(10, gain / 20.0);
@@ -577,7 +577,7 @@ i3ds::BaslerCamera::set_error_state(const std::string &error_message, const bool
 
   if (!dont_throw)
     {
-      throw i3ds::CommandError(error_other, error_message);
+      throw i3ds::CommandError(i3ds_asn1::error_other, error_message);
     }
 }
 
@@ -641,7 +641,7 @@ i3ds::BaslerCamera::SampleLoop()
               const int width = ptrGrabResult->GetWidth();
               const int height = ptrGrabResult->GetHeight();
 
-              const byte* pImageBuffer = (const byte*) ptrGrabResult->GetBuffer();
+              const i3ds_asn1::byte* pImageBuffer = (const i3ds_asn1::byte*) ptrGrabResult->GetBuffer();
 
               send_sample(pImageBuffer, width, height);
 
