@@ -82,20 +82,45 @@ i3ds::BaslerCamera::Open()
           camera_->GevSCPD.SetValue(param_.packet_delay);
 
           // Set pixel format depending on data depth.
-          switch (param_.data_depth)
+          switch (param_.frame_mode)
             {
-            case 12:
-              BOOST_LOG_TRIVIAL(info) << "Pixel format: Mono12";
-              camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono12);
-              break;
+              case i3ds_asn1::mode_mono:
+                switch (param_.data_depth)
+                  {
+                  case 12:
+                    BOOST_LOG_TRIVIAL(info) << "Pixel format: Mono12";
+                    camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono12);
+                    break;
 
-            case 8:
-              BOOST_LOG_TRIVIAL(info) << "Pixel format: Mono8";
-              camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono8);
-              break;
+                  case 8:
+                    BOOST_LOG_TRIVIAL(info) << "Pixel format: Mono8";
+                    camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono8);
+                    break;
 
-            default:
-              BOOST_LOG_TRIVIAL(error) << "Unsupported data depth: " << param_.data_depth;
+                  default:
+                    BOOST_LOG_TRIVIAL(error) << "Unsupported data depth for mono images: " << param_.data_depth;
+                  }
+                  break;
+              case i3ds_asn1::mode_rgb:
+                switch (param_.data_depth)
+                  {
+                  case 12:
+                    BOOST_LOG_TRIVIAL(info) << "Pixel format: RGB12";
+                    camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_RGB12Packed);
+                    break;
+
+                  case 8:
+                    BOOST_LOG_TRIVIAL(info) << "Pixel format: RGB8";
+                    camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_RGB8Packed);
+                    break;
+
+                  default:
+                    BOOST_LOG_TRIVIAL(error) << "Unsupported data depth for RGB images: " << param_.data_depth;
+                  }
+                break;
+              default:
+                BOOST_LOG_TRIVIAL(error) << "Unsupported frame-mode: " << param_.frame_mode;
+                
             }
         }
       catch (GenICam::GenericException &e)

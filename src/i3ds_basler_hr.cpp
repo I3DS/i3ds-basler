@@ -58,6 +58,7 @@ int main(int argc, char** argv)
 {
   unsigned int node_id;
   counter verbosity;
+  bool rgb;
 
   i3ds::GigECamera::Parameters param;
 
@@ -85,6 +86,8 @@ int main(int argc, char** argv)
   ("pattern", po::value<bool>(&param.support_pattern)->default_value(false), "Support pattern illumination.")
   ("trigger-pattern-output", po::value<int>(&param.pattern_output)->default_value(6), "Trigger output for pattern.")
   ("trigger-pattern-offset", po::value<int>(&param.pattern_offset)->default_value(0), "Trigger offset for pattern (us).")
+
+  ("rgb", po::value<bool>(&rgb)->default_value(false), "Capture RGB images.")
 
   ("verbose,v", po::value(&verbosity)->zero_tokens(), "Print verbose output (multiple for more output)")
   ("quiet,q", "Quiet ouput")
@@ -123,10 +126,19 @@ int main(int argc, char** argv)
   BOOST_LOG_TRIVIAL(info) << "Camera type: Basler HR";
 
   // TODO: Read these from input?
-  param.frame_mode = i3ds_asn1::mode_mono;
   param.data_depth = 8;
-  param.pixel_size = 1;
   param.image_count = 1;
+
+  if (vm.count("rgb"))
+    {
+      param.frame_mode = i3ds_asn1::mode_rgb;
+      param.pixel_size = 3;
+    }
+  else
+    {
+      param.frame_mode = i3ds_asn1::mode_mono;
+      param.pixel_size = 1;
+    }
 
   i3ds::Context::Ptr context = i3ds::Context::Create();;
 
