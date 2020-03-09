@@ -100,7 +100,7 @@ i3ds::BaslerCamera::Open()
                   default:
                     BOOST_LOG_TRIVIAL(error) << "Unsupported data depth for mono images: " << param_.data_depth;
                   }
-                  break;
+                break;
               case i3ds_asn1::mode_rgb:
                 switch (param_.data_depth)
                   {
@@ -118,6 +118,10 @@ i3ds::BaslerCamera::Open()
                     BOOST_LOG_TRIVIAL(error) << "Unsupported data depth for RGB images: " << param_.data_depth;
                   }
                 break;
+              case i3ds_asn1::mode_uyvy:
+                  BOOST_LOG_TRIVIAL(info) << "Pixel format: YUV422";
+                  camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_YUV422Packed);
+                  break;
               default:
                 BOOST_LOG_TRIVIAL(error) << "Unsupported frame-mode: " << param_.frame_mode;
                 

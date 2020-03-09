@@ -59,6 +59,7 @@ int main(int argc, char** argv)
   unsigned int node_id;
   counter verbosity;
   bool rgb;
+  bool yuv;
 
   i3ds::GigECamera::Parameters param;
 
@@ -88,6 +89,7 @@ int main(int argc, char** argv)
   ("trigger-pattern-offset", po::value<int>(&param.pattern_offset)->default_value(0), "Trigger offset for pattern (us).")
 
   ("rgb", po::value<bool>(&rgb)->default_value(false), "Capture RGB images.")
+  ("yuv", po::value<bool>(&yuv)->default_value(false), "Capture YUV422 images.")
 
   ("verbose,v", po::value(&verbosity)->zero_tokens(), "Print verbose output (multiple for more output)")
   ("quiet,q", "Quiet ouput")
@@ -129,10 +131,15 @@ int main(int argc, char** argv)
   param.data_depth = 8;
   param.image_count = 1;
 
-  if (vm.count("rgb"))
+  if (rgb)
     {
       param.frame_mode = i3ds_asn1::mode_rgb;
       param.pixel_size = 3;
+    }
+  else if (yuv)
+    {
+      param.frame_mode = i3ds_asn1::mode_uyvy;
+      param.pixel_size = 2;
     }
   else
     {
