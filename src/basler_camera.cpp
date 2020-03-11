@@ -22,8 +22,9 @@ namespace logging = boost::log;
 
 using namespace Basler_GigECamera;
 
-i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, i3ds_asn1::NodeID node, Parameters param)
-  : GigECamera(context, node, param)
+i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, i3ds_asn1::NodeID node, Parameters param, bool enable_trigger_output)
+  : GigECamera(context, node, param),
+    enable_trigger_output_(enable_trigger_output)
 {
   camera_ = nullptr;
 
@@ -125,6 +126,10 @@ i3ds::BaslerCamera::Open()
               default:
                 BOOST_LOG_TRIVIAL(error) << "Unsupported frame-mode: " << param_.frame_mode;
                 
+            }
+          if (enable_trigger_output_)
+            {
+              enableTriggerOutput();
             }
         }
       catch (GenICam::GenericException &e)
@@ -715,4 +720,14 @@ i3ds::BaslerCamera::SampleLoop()
           break;
         }
     }
+}
+
+
+void
+i3ds::BaslerCamera::enableTriggerOutput()
+{
+  BOOST_LOG_TRIVIAL(info) << "Enabling trigger output";
+  camera_->LineSelector.SetValue(LineSelector_Out1);
+  camera_->LineSource.SetValue(LineSource_ExposureActive);
+  BOOST_LOG_TRIVIAL(info) << "Trigger output enabled";
 }

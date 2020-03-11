@@ -58,8 +58,11 @@ int main(int argc, char** argv)
 {
   unsigned int node_id;
   counter verbosity;
+
   bool rgb;
   bool yuv;
+
+  bool enable_trigger_output;
 
   i3ds::GigECamera::Parameters param;
 
@@ -78,6 +81,8 @@ int main(int argc, char** argv)
   ("trigger-source", po::value<int>(&param.trigger_source)->default_value(1), "Trigger generator for camera.")
   ("trigger-camera-output", po::value<int>(&param.camera_output)->default_value(2), "Trigger output for camera.")
   ("trigger-camera-offset", po::value<int>(&param.camera_offset)->default_value(5000), "Trigger offset for camera (us).")
+
+  ("trigger-out", po::value<bool>(&enable_trigger_output)->default_value(false), "Enables opto-GPIO output on exposure")
 
   ("flash", po::value<bool>(&param.support_flash)->default_value(false), "Support wide-angle flash.")
   ("flash-node", po::value<i3ds_asn1::NodeID>(&param.flash_node)->default_value(21), "Node ID of flash service.")
@@ -151,7 +156,7 @@ int main(int argc, char** argv)
 
   i3ds::Server server(context);
 
-  i3ds::BaslerCamera camera(context, node_id, param);
+  i3ds::BaslerCamera camera(context, node_id, param, enable_trigger_output);
 
   camera.Attach(server);
 
