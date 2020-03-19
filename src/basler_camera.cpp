@@ -82,6 +82,15 @@ i3ds::BaslerCamera::Open()
           camera_->GevSCPSPacketSize.SetValue(param_.packet_size);
           camera_->GevSCPD.SetValue(param_.packet_delay);
 
+          // Select auto function ROI 2
+          camera_->AutoFunctionAOISelector.SetValue(AutoFunctionAOISelector_AOI2);
+          // Enable the Balance White Auto auto function
+          // for the auto function ROI selected
+          camera_->AutoFunctionAOIUsageWhiteBalance.SetValue(true);
+          // Enable Balance White Auto by setting the operating mode to Continuous
+          camera_->BalanceWhiteAuto.SetValue(BalanceWhiteAuto_Continuous);
+
+
           // Set pixel format depending on data depth.
           switch (param_.frame_mode)
             {
