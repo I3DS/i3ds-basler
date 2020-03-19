@@ -82,15 +82,6 @@ i3ds::BaslerCamera::Open()
           camera_->GevSCPSPacketSize.SetValue(param_.packet_size);
           camera_->GevSCPD.SetValue(param_.packet_delay);
 
-          // Select auto function ROI 2
-          camera_->AutoFunctionAOISelector.SetValue(AutoFunctionAOISelector_AOI2);
-          // Enable the Balance White Auto auto function
-          // for the auto function ROI selected
-          camera_->AutoFunctionAOIUsageWhiteBalance.SetValue(true);
-          // Enable Balance White Auto by setting the operating mode to Continuous
-          camera_->BalanceWhiteAuto.SetValue(BalanceWhiteAuto_Continuous);
-
-
           // Set pixel format depending on data depth.
           switch (param_.frame_mode)
             {
@@ -127,14 +118,32 @@ i3ds::BaslerCamera::Open()
                   default:
                     BOOST_LOG_TRIVIAL(error) << "Unsupported data depth for RGB images: " << param_.data_depth;
                   }
+
+		  // Select auto function ROI 2
+		  camera_->AutoFunctionAOISelector.SetValue(AutoFunctionAOISelector_AOI2);
+		  // Enable the Balance White Auto auto function
+		  // for the auto function ROI selected
+		  camera_->AutoFunctionAOIUsageWhiteBalance.SetValue(true);
+		  // Enable Balance White Auto by setting the operating mode to Continuous
+		  camera_->BalanceWhiteAuto.SetValue(BalanceWhiteAuto_Continuous);
+
                 break;
               case i3ds_asn1::mode_uyvy:
                   BOOST_LOG_TRIVIAL(info) << "Pixel format: YUV422";
                   camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_YUV422Packed);
+
+		  // Select auto function ROI 2
+		  camera_->AutoFunctionAOISelector.SetValue(AutoFunctionAOISelector_AOI2);
+		  // Enable the Balance White Auto auto function
+		  // for the auto function ROI selected
+		  camera_->AutoFunctionAOIUsageWhiteBalance.SetValue(true);
+		  // Enable Balance White Auto by setting the operating mode to Continuous
+		  camera_->BalanceWhiteAuto.SetValue(BalanceWhiteAuto_Continuous);
+
                   break;
               default:
                 BOOST_LOG_TRIVIAL(error) << "Unsupported frame-mode: " << param_.frame_mode;
-                
+
             }
           if (enable_trigger_output_)
             {
