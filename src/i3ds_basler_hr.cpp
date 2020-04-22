@@ -17,6 +17,7 @@
 
 #include <boost/program_options.hpp>
 
+#include <i3ds/exception.hpp>
 #include "i3ds/communication.hpp"
 #include "basler_camera.hpp"
 
@@ -70,6 +71,7 @@ int main(int argc, char** argv)
   ("camera-name,c", po::value<std::string>(&param.camera_name), "Connect via (UserDefinedName) of Camera")
   ("package-size,p", po::value<int>(&param.packet_size)->default_value(8192), "Transport-layer buffersize (MTU).")
   ("package-delay,d", po::value<int>(&param.packet_delay)->default_value(20), "Inter-package delay parameter of camera.")
+  ("data-depth", po::value<int>(&param.data_depth)->default_value(12), "Depth of image pixels (bits).")
 
   ("trigger", po::value<bool>(&param.external_trigger)->default_value(true), "Enable external trigger.")
   ("trigger-node", po::value<i3ds_asn1::NodeID>(&param.trigger_node)->default_value(20), "Node ID of trigger service.")
@@ -118,14 +120,18 @@ int main(int argc, char** argv)
       logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::info);
     }
 
+  if (param.data_depth < 8 || param.data_depth > 12)
+      throw i3ds::CommandError(i3ds_asn1::error_unsupported, "data_depth out of rangte");
+  param.pixel_size = param.data_depth / 8 + (param.data_depth % 8 > 0);
+
   BOOST_LOG_TRIVIAL(info) << "Node ID:     " << node_id;
   BOOST_LOG_TRIVIAL(info) << "Camera name: " << param.camera_name;
   BOOST_LOG_TRIVIAL(info) << "Camera type: Basler HR";
+  BOOST_LOG_TRIVIAL(trace) << "Data-depth: " << param.data_depth;
+  BOOST_LOG_TRIVIAL(trace) << "pixel-size: " << param.pixel_size;
 
   // TODO: Read these from input?
   param.frame_mode = i3ds_asn1::mode_mono;
-  param.data_depth = 8;
-  param.pixel_size = 1;
   param.image_count = 1;
 
   i3ds::Context::Ptr context = i3ds::Context::Create();;
