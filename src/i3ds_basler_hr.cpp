@@ -18,6 +18,7 @@
 #include <boost/program_options.hpp>
 
 #include <i3ds/exception.hpp>
+#include <i3ds/configurator.hpp>
 #include "i3ds/communication.hpp"
 #include "basler_camera.hpp"
 
@@ -58,7 +59,6 @@ void validate(boost::any& v, std::vector<std::string> const& xs, counter*, long)
 int main(int argc, char** argv)
 {
   unsigned int node_id;
-  counter verbosity;
 
   bool rgb;
   bool yuv;
@@ -66,16 +66,17 @@ int main(int argc, char** argv)
   bool enable_trigger_output;
 
   i3ds::GigECamera::Parameters param;
+  i3ds::Configurator configurator;
 
   po::options_description desc("Allowed camera control options");
+  configurator.add_common_options(desc);
 
   desc.add_options()
-  ("help,h", "Produce this message")
   ("node,n", po::value<unsigned int>(&node_id)->default_value(10), "Node ID of camera")
 
   ("camera-name,c", po::value<std::string>(&param.camera_name), "Connect via (UserDefinedName) of Camera")
-  ("package-size,p", po::value<int>(&param.packet_size)->default_value(8192), "Transport-layer buffersize (MTU).")
-  ("package-delay,d", po::value<int>(&param.packet_delay)->default_value(20), "Inter-package delay parameter of camera.")
+  ("package-size", po::value<int>(&param.packet_size)->default_value(8192), "Transport-layer buffersize (MTU).")
+  ("package-delay", po::value<int>(&param.packet_delay)->default_value(20), "Inter-package delay parameter of camera.")
   ("data-depth", po::value<int>(&param.data_depth)->default_value(12), "Depth of image pixels (bits).")
 
   ("trigger", po::value<bool>(&param.external_trigger)->default_value(true), "Enable external trigger.")
@@ -94,41 +95,12 @@ int main(int argc, char** argv)
   ("pattern", po::value<bool>(&param.support_pattern)->default_value(false), "Support pattern illumination.")
   ("trigger-pattern-output", po::value<int>(&param.pattern_output)->default_value(6), "Trigger output for pattern.")
   ("trigger-pattern-offset", po::value<int>(&param.pattern_offset)->default_value(0), "Trigger offset for pattern (us).")
-
   ("rgb", po::value<bool>(&rgb)->default_value(false), "Capture RGB images.")
   ("yuv", po::value<bool>(&yuv)->default_value(false), "Capture YUV422 images.")
-
-  ("verbose,v", po::value(&verbosity)->zero_tokens(), "Print verbose output (multiple for more output)")
-  ("quiet,q", "Quiet ouput")
   ("print,p", "Print the camera configuration")
   ;
 
-  po::variables_map vm;
-  po::store(po::parse_command_line(argc, argv, desc), vm);
-  po::notify(vm);
-
-  if (vm.count("help"))
-    {
-      std::cout << desc << std::endl;
-      return -1;
-    }
-
-  if (vm.count("quiet"))
-    {
-      logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::warning);
-    }
-  else if (verbosity.count == 1)
-    {
-      logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::debug);
-    }
-  else if (verbosity.count > 1)
-    {
-      logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::trace);
-    }
-  else
-    {
-      logging::core::get()->set_filter(logging::trivial::severity >= logging::trivial::info);
-    }
+  po::variables_map vm = configurator.parse_common_options(desc, argc, argv);
 
   if (param.data_depth < 8 || param.data_depth > 12)
       throw i3ds::CommandError(i3ds_asn1::error_unsupported, "data_depth out of rangte");
