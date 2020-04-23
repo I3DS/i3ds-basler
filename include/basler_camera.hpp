@@ -27,7 +27,7 @@ class BaslerCamera : public GigECamera
 {
 public:
 
-  BaslerCamera(Context::Ptr context, i3ds_asn1::NodeID node, Parameters param);
+  BaslerCamera(Context::Ptr context, i3ds_asn1::NodeID node, Parameters param, bool enable_trigger_output);
 
   virtual ~BaslerCamera();
 
@@ -41,6 +41,8 @@ protected:
 
   // Set internal trigger to the given period.
   virtual bool setInternalTrigger(int64_t period_us) override;
+
+  void enableTriggerOutput();
 
   // Sensor width and height
   virtual int64_t getSensorWidth() const override;
@@ -107,6 +109,8 @@ private:
   std::thread sampler_;
 
   mutable Pylon::CBaslerGigEInstantCamera* camera_;
+
+  bool enable_trigger_output_;
 };
 
 } // namespace i3ds

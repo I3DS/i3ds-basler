@@ -22,8 +22,9 @@ namespace logging = boost::log;
 
 using namespace Basler_GigECamera;
 
-i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, i3ds_asn1::NodeID node, Parameters param)
-  : GigECamera(context, node, param)
+i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, i3ds_asn1::NodeID node, Parameters param, bool enable_trigger_output)
+  : GigECamera(context, node, param),
+    enable_trigger_output_(enable_trigger_output)
 {
   camera_ = nullptr;
 
@@ -82,20 +83,71 @@ i3ds::BaslerCamera::Open()
           camera_->GevSCPD.SetValue(param_.packet_delay);
 
           // Set pixel format depending on data depth.
-          switch (param_.data_depth)
+          switch (param_.frame_mode)
             {
-            case 12:
-              BOOST_LOG_TRIVIAL(info) << "Pixel format: Mono12";
-              camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono12);
-              break;
+              case i3ds_asn1::mode_mono:
+                switch (param_.data_depth)
+                  {
+                  case 12:
+                    BOOST_LOG_TRIVIAL(info) << "Pixel format: Mono12";
+                    camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono12);
+                    break;
 
-            case 8:
-              BOOST_LOG_TRIVIAL(info) << "Pixel format: Mono8";
-              camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono8);
-              break;
+                  case 8:
+                    BOOST_LOG_TRIVIAL(info) << "Pixel format: Mono8";
+                    camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_Mono8);
+                    break;
 
-            default:
-              BOOST_LOG_TRIVIAL(error) << "Unsupported data depth: " << param_.data_depth;
+                  default:
+                    BOOST_LOG_TRIVIAL(error) << "Unsupported data depth for mono images: " << param_.data_depth;
+                  }
+                break;
+              case i3ds_asn1::mode_rgb:
+                switch (param_.data_depth)
+                  {
+                  case 12:
+                    BOOST_LOG_TRIVIAL(info) << "Pixel format: RGB12";
+                    camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_RGB12Packed);
+                    break;
+
+                  case 8:
+                    BOOST_LOG_TRIVIAL(info) << "Pixel format: RGB8";
+                    camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_RGB8Packed);
+                    break;
+
+                  default:
+                    BOOST_LOG_TRIVIAL(error) << "Unsupported data depth for RGB images: " << param_.data_depth;
+                  }
+
+		  // Select auto function ROI 2
+		  camera_->AutoFunctionAOISelector.SetValue(AutoFunctionAOISelector_AOI2);
+		  // Enable the Balance White Auto auto function
+		  // for the auto function ROI selected
+		  camera_->AutoFunctionAOIUsageWhiteBalance.SetValue(true);
+		  // Enable Balance White Auto by setting the operating mode to Continuous
+		  camera_->BalanceWhiteAuto.SetValue(BalanceWhiteAuto_Continuous);
+
+                break;
+              case i3ds_asn1::mode_uyvy:
+                  BOOST_LOG_TRIVIAL(info) << "Pixel format: YUV422";
+                  camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_YUV422Packed);
+
+		  // Select auto function ROI 2
+		  camera_->AutoFunctionAOISelector.SetValue(AutoFunctionAOISelector_AOI2);
+		  // Enable the Balance White Auto auto function
+		  // for the auto function ROI selected
+		  camera_->AutoFunctionAOIUsageWhiteBalance.SetValue(true);
+		  // Enable Balance White Auto by setting the operating mode to Continuous
+		  camera_->BalanceWhiteAuto.SetValue(BalanceWhiteAuto_Continuous);
+
+                  break;
+              default:
+                BOOST_LOG_TRIVIAL(error) << "Unsupported frame-mode: " << param_.frame_mode;
+
+            }
+          if (enable_trigger_output_)
+            {
+              enableTriggerOutput();
             }
         }
       catch (GenICam::GenericException &e)
@@ -686,4 +738,14 @@ i3ds::BaslerCamera::SampleLoop()
           break;
         }
     }
+}
+
+
+void
+i3ds::BaslerCamera::enableTriggerOutput()
+{
+  BOOST_LOG_TRIVIAL(info) << "Enabling trigger output";
+  camera_->LineSelector.SetValue(LineSelector_Out1);
+  camera_->LineSource.SetValue(LineSource_ExposureActive);
+  BOOST_LOG_TRIVIAL(info) << "Trigger output enabled";
 }

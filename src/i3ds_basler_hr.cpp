@@ -60,6 +60,11 @@ int main(int argc, char** argv)
   unsigned int node_id;
   counter verbosity;
 
+  bool rgb;
+  bool yuv;
+
+  bool enable_trigger_output;
+
   i3ds::GigECamera::Parameters param;
 
   po::options_description desc("Allowed camera control options");
@@ -79,6 +84,8 @@ int main(int argc, char** argv)
   ("trigger-camera-output", po::value<int>(&param.camera_output)->default_value(2), "Trigger output for camera.")
   ("trigger-camera-offset", po::value<int>(&param.camera_offset)->default_value(5000), "Trigger offset for camera (us).")
 
+  ("trigger-out", po::value<bool>(&enable_trigger_output)->default_value(false), "Enables opto-GPIO output on exposure")
+
   ("flash", po::value<bool>(&param.support_flash)->default_value(false), "Support wide-angle flash.")
   ("flash-node", po::value<i3ds_asn1::NodeID>(&param.flash_node)->default_value(21), "Node ID of flash service.")
   ("trigger-flash-output", po::value<int>(&param.flash_output)->default_value(8), "Trigger output for flash.")
@@ -87,6 +94,9 @@ int main(int argc, char** argv)
   ("pattern", po::value<bool>(&param.support_pattern)->default_value(false), "Support pattern illumination.")
   ("trigger-pattern-output", po::value<int>(&param.pattern_output)->default_value(6), "Trigger output for pattern.")
   ("trigger-pattern-offset", po::value<int>(&param.pattern_offset)->default_value(0), "Trigger offset for pattern (us).")
+
+  ("rgb", po::value<bool>(&rgb)->default_value(false), "Capture RGB images.")
+  ("yuv", po::value<bool>(&yuv)->default_value(false), "Capture YUV422 images.")
 
   ("verbose,v", po::value(&verbosity)->zero_tokens(), "Print verbose output (multiple for more output)")
   ("quiet,q", "Quiet ouput")
@@ -130,15 +140,28 @@ int main(int argc, char** argv)
   BOOST_LOG_TRIVIAL(trace) << "Data-depth: " << param.data_depth;
   BOOST_LOG_TRIVIAL(trace) << "pixel-size: " << param.pixel_size;
 
-  // TODO: Read these from input?
-  param.frame_mode = i3ds_asn1::mode_mono;
   param.image_count = 1;
+
+  if (rgb)
+    {
+      param.frame_mode = i3ds_asn1::mode_rgb;
+      param.pixel_size *= 3;
+    }
+  else if (yuv)
+    {
+      param.frame_mode = i3ds_asn1::mode_uyvy;
+      param.pixel_size *= 2;
+    }
+  else
+    {
+      param.frame_mode = i3ds_asn1::mode_mono;
+    }
 
   i3ds::Context::Ptr context = i3ds::Context::Create();;
 
   i3ds::Server server(context);
 
-  i3ds::BaslerCamera camera(context, node_id, param);
+  i3ds::BaslerCamera camera(context, node_id, param, enable_trigger_output);
 
   camera.Attach(server);
 
