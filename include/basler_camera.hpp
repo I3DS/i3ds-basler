@@ -31,6 +31,9 @@ public:
 
   virtual ~BaslerCamera();
 
+  void overrideBlack(int black);
+  void overrideGamma(bool gamma_enable, double gamma = 1.0);
+
 protected:
 
   // Camera control
@@ -111,6 +114,12 @@ private:
   mutable Pylon::CBaslerGigEInstantCamera* camera_;
 
   bool enable_trigger_output_;
+
+  bool black_override_;
+  int black_;
+  bool gamma_override_;
+  bool gamma_enable_;
+  double gamma_;
 };
 
 } // namespace i3ds

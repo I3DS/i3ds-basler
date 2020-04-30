@@ -64,6 +64,8 @@ int main(int argc, char** argv)
   bool yuv;
 
   bool enable_trigger_output;
+  double gamma;
+  int black_level;
 
   i3ds::GigECamera::Parameters param;
   i3ds::Configurator configurator;
@@ -97,6 +99,9 @@ int main(int argc, char** argv)
   ("trigger-pattern-offset", po::value<int>(&param.pattern_offset)->default_value(0), "Trigger offset for pattern (us).")
   ("rgb", po::value<bool>(&rgb)->default_value(false), "Capture RGB images.")
   ("yuv", po::value<bool>(&yuv)->default_value(false), "Capture YUV422 images.")
+  ("black-level", po::value<int>(&black_level), "Adjust the overall brightness by adjusting ech pixel [0..255]")
+  ("disable-gamma", "Disable gamma correction value.")
+  ("gamma", po::value<double>(&gamma), "Set Gamma correction value [0..4.0] (will set black level to 0 unless overidden)")
   ("print,p", "Print the camera configuration")
   ;
 
@@ -141,6 +146,18 @@ int main(int argc, char** argv)
   signal(SIGINT, signal_handler);
 
   server.Start();
+
+  // Handle black & gamma, this can only be done after activate, so this
+  // won't happen for a while yet.
+  if (vm.count("black-level"))
+      camera.overrideBlack(black_level);
+
+  if (vm.count("disable-gamma")) {
+      camera.overrideGamma(false);
+  }
+  else if (vm.count("gamma")) {
+      camera.overrideGamma(true, gamma);
+  }
 
   while (running)
     {
