@@ -24,7 +24,12 @@ using namespace Basler_GigECamera;
 
 i3ds::BaslerCamera::BaslerCamera(Context::Ptr context, i3ds_asn1::NodeID node, Parameters param, bool enable_trigger_output)
   : GigECamera(context, node, param),
-    enable_trigger_output_(enable_trigger_output)
+    enable_trigger_output_(enable_trigger_output),
+    black_override_(false),
+    black_(0),
+    gamma_override_(false),
+    gamma_enable_(true),
+    gamma_(1.0)
 {
   camera_ = nullptr;
 
@@ -149,6 +154,31 @@ i3ds::BaslerCamera::Open()
             {
               enableTriggerOutput();
             }
+
+          if (gamma_override_) {
+              camera_->GammaEnable.SetValue(gamma_enable_);
+              if (gamma_enable_) {
+                  camera_->GammaSelector.SetValue(GammaSelector_User);
+                  camera_->Gamma.SetValue(gamma_);
+                  if (!black_override_) {
+                      // User has no opinin, set black to 0.0 as per basler doc
+                      // https://docs.baslerweb.com/gamma.html
+                      camera_->BlackLevelRaw.SetValue(0.0);
+                      BOOST_LOG_TRIVIAL(info) << "Gamma enable forces new black value, setting to 0.0. (Override/change with --black-level <val>)";
+                  }
+              }
+
+              BOOST_LOG_TRIVIAL(info) << "GammaEnable: " << camera_->GammaEnable.GetValue();
+              BOOST_LOG_TRIVIAL(info) << "GammaSelector: " << camera_->GammaSelector.GetValue();
+              BOOST_LOG_TRIVIAL(info) << "Gamma: " << camera_->Gamma.GetValue();
+              if (!black_override_)
+                  BOOST_LOG_TRIVIAL(info) << "BlackLevelRaw: " << camera_->BlackLevelRaw.GetValue();
+          }
+
+          if (black_override_) {
+              camera_->BlackLevelRaw.SetValue(black_);
+              BOOST_LOG_TRIVIAL(info) << "BlackLevelRaw: " << camera_->BlackLevelRaw.GetValue();
+          }
         }
       catch (GenICam::GenericException &e)
         {
@@ -748,4 +778,26 @@ i3ds::BaslerCamera::enableTriggerOutput()
   camera_->LineSelector.SetValue(LineSelector_Out1);
   camera_->LineSource.SetValue(LineSource_ExposureActive);
   BOOST_LOG_TRIVIAL(info) << "Trigger output enabled";
+}
+
+void i3ds::BaslerCamera::overrideBlack(int black)
+{
+    if (black < 0 || black > 255)
+        throw std::invalid_argument("black level out of range [0..255]");
+
+    black_override_ = true;
+    black_ = black;
+    BOOST_LOG_TRIVIAL(info) << "Adjusting black-level: " << black_;
+}
+
+void
+i3ds::BaslerCamera::overrideGamma(bool gamma_enable, double gamma)
+{
+    if (gamma < 0.0 || gamma > 4.0)
+        throw std::invalid_argument("gamma out of range [0.0..4.0]");
+
+    gamma_override_ = true;
+    gamma_enable_ = gamma_enable;
+    gamma_ = gamma;
+    BOOST_LOG_TRIVIAL(info) << "Adjusting gamma: " << gamma_ << ", enable: " << gamma_enable_;
 }
