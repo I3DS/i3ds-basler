@@ -108,7 +108,7 @@ int main(int argc, char** argv)
   po::variables_map vm = configurator.parse_common_options(desc, argc, argv);
 
   if (param.data_depth < 8 || param.data_depth > 12)
-      throw i3ds::CommandError(i3ds_asn1::error_unsupported, "data_depth out of rangte");
+      throw i3ds::CommandError(i3ds_asn1::error_unsupported, "data_depth out of range.");
   param.pixel_size = param.data_depth / 8 + (param.data_depth % 8 > 0);
 
   BOOST_LOG_TRIVIAL(info) << "Node ID:     " << node_id;
