@@ -15,23 +15,36 @@ enable_testing ()
 
 option(BUILD_EMBEDDED "Build for embedded systems" OFF)
 option(BUILD_PETALINUX "Build for petalinux using bitbake" OFF)
+option(BUILD_DEBUG "Enable debug-build with lots and lots of warnings" OFF)
 
 if (BUILD_EMBEDDED)
   if(NOT DEFINED CMAKE_FIND_ROOT_PATH)
     MESSAGE(FATAL_ERROR "CMAKE_FIND_ROOT_PATH path must be set when compiling for embedded")
   endif(NOT DEFINED CMAKE_FIND_ROOT_PATH)
-  SET(CMAKE_C_COMPILER "aarch64-linux-gnu-gcc")
-  SET(CMAKE_CXX_COMPILER "aarch64-linux-gnu-g++")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --sysroot=${CMAKE_FIND_ROOT_PATH}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --sysroot=${CMAKE_FIND_ROOT_PATH}")
-endif (BUILD_EMBEDDED)
 
+  if (DEFINED BUILD_SYSROOT)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --sysroot=${BUILD_SYSROOT}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --sysroot=${BUILD_SYSROOT}")
+  else ()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --sysroot=${CMAKE_FIND_ROOT_PATH}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --sysroot=${CMAKE_FIND_ROOT_PATH}")
+  endif ()
+endif (BUILD_EMBEDDED)
 
 ################################################################################
 # Check that the C++ compiler supports C++11 or C++0X, else issue warning.
 ################################################################################
 
 include (CheckCXXCompilerFlag REQUIRED)
+
+function(set_cxx_flag FLAG)
+  check_cxx_compiler_flag (${FLAG} CXX_SUPPORT_FLAG)
+  if (${CXX_SUPPORT_FLAG})
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FLAG}" PARENT_SCOPE)
+  else ()
+    message(FATAL_ERROR "Failed setting ${FLAG}, please update CMakeLists")
+  endif ()
+endfunction(set_cxx_flag)
 
 if (NOT CMAKE_CXX_FLAGS)
 
@@ -57,6 +70,7 @@ if (NOT CMAKE_CXX_FLAGS)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
   endif ()
 
+
   check_cxx_compiler_flag ("-fpic" CXX_SUPPORT_FPIC_1)
   check_cxx_compiler_flag ("-fPIC" CXX_SUPPORT_FPIC_2)
 
@@ -69,6 +83,17 @@ if (NOT CMAKE_CXX_FLAGS)
   endif ()
 
 endif (NOT CMAKE_CXX_FLAGS)
+
+if (${BUILD_DEBUG})
+  set_cxx_flag("-ggdb3")
+  set_cxx_flag("-Wall")
+  set_cxx_flag("-pedantic")
+  set_cxx_flag("-Wextra")
+  set_cxx_flag("-Werror")
+  set_cxx_flag("-Wfatal-errors")
+  set_cxx_flag("-fsanitize=address")
+endif ()
+
 
 ################################################################################
 # Add subdirectories with sources

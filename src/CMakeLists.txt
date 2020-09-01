@@ -1,6 +1,9 @@
 find_package (Boost COMPONENTS program_options log REQUIRED)
 
 if (NOT(BUILD_EMBEDDED) AND NOT(BUILD_PETALINUX))
+  find_path(PCD_TESTDATA images/ HINT ${CMAKE_SOURCE_DIR})
+
+
   set (PYLON_ROOT /opt/pylon5)
 
   execute_process(COMMAND ${PYLON_ROOT}/bin/pylon-config --cflags OUTPUT_VARIABLE BASLER_HR_CPPFLAGS)
@@ -28,7 +31,7 @@ if (NOT(BUILD_EMBEDDED) AND NOT(BUILD_PETALINUX))
   #CXXFLAGS   := -g -O0  #e.g., CXXFLAGS=-g -O0 for debugging
   #LDFLAGS    := $(shell $(PYLON_ROOT)/bin/pylon-config --libs-rpath)
   #LDLIBS     := $(shell $(PYLON_ROOT)/bin/pylon-config --libs) -lopencv_core -lopencv_highgui -lpthread
-
+#  message(FATAL_ERROR "Not embedded nor petalinux")
   # Basler HR sample END
 else (NOT(BUILD_EMBEDDED) AND NOT(BUILD_PETALINUX))
   find_file(pylon_INCLUDE_DIR include/pylon5)

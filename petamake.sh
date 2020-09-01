@@ -1,12 +1,16 @@
 #!/bin/sh
 
-BSP_NAME=i3ds-bsp
-BSP_ROOT=/opt/bsp/$BSP_NAME/build/tmp/sysroots/plnx_aarch64
+BSP_PATH="/opt/bsp"
+BSP_NAME="eross_v4"
+
+source ${BSP_PATH}/$BSP_NAME/images/linux/sdk/environment-setup-aarch64-xilinx-linux
+BSP_ROOT=${BSP_PATH}/$BSP_NAME/images/linux/sdk/sysroots/aarch64-xilinx-linux
 
 mkdir -p build_petalinux
 cd build_petalinux
-cmake .. -DCMAKE_C_COMPILER="aarch64-linux-gnu-gcc" \
-      -DCMAKE_CXX_COMPILER="aarch64-linux-gnu-c++" \
-      -DCMAKE_FIND_ROOT_PATH="$BSP_ROOT" \
-      -DBUILD_EMBEDDED=ON
+cmake .. -DCMAKE_C_COMPILER="aarch64-xilinx-linux-gcc" \
+      -DCMAKE_CXX_COMPILER="aarch64-xilinx-linux-g++" \
+      -DBUILD_SYSROOT="${BSP_ROOT}" \
+      -DBUILD_EMBEDDED=ON \
+      -DBUILD_DDEBUG=ON
 make -j4
