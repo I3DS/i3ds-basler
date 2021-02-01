@@ -108,7 +108,7 @@ int main(int argc, char** argv)
   po::variables_map vm = configurator.parse_common_options(desc, argc, argv);
 
   if (param.data_depth < 8 || param.data_depth > 12)
-      throw i3ds::CommandError(i3ds_asn1::error_unsupported, "data_depth out of range.");
+      throw i3ds::CommandError(i3ds_asn1::ResultCode_error_unsupported, "data_depth out of range.");
   param.pixel_size = param.data_depth / 8 + (param.data_depth % 8 > 0);
 
   BOOST_LOG_TRIVIAL(info) << "Node ID:     " << node_id;
@@ -121,17 +121,17 @@ int main(int argc, char** argv)
 
   if (rgb)
     {
-      param.frame_mode = i3ds_asn1::mode_rgb;
+      param.frame_mode = i3ds_asn1::Frame_mode_t_mode_rgb;
       param.pixel_size *= 3;
     }
   else if (yuv)
     {
-      param.frame_mode = i3ds_asn1::mode_uyvy;
+      param.frame_mode = i3ds_asn1::Frame_mode_t_mode_uyvy;
       param.pixel_size *= 2;
     }
   else
     {
-      param.frame_mode = i3ds_asn1::mode_mono;
+      param.frame_mode = i3ds_asn1::Frame_mode_t_mode_mono;
     }
 
   i3ds::Context::Ptr context = i3ds::Context::Create();;

@@ -90,7 +90,7 @@ i3ds::BaslerCamera::Open()
           // Set pixel format depending on data depth.
           switch (param_.frame_mode)
             {
-              case i3ds_asn1::mode_mono:
+              case i3ds_asn1::Frame_mode_t_mode_mono:
                 switch (param_.data_depth)
                   {
                   case 12:
@@ -107,7 +107,7 @@ i3ds::BaslerCamera::Open()
                     BOOST_LOG_TRIVIAL(error) << "Unsupported data depth for mono images: " << param_.data_depth;
                   }
                 break;
-              case i3ds_asn1::mode_rgb:
+              case i3ds_asn1::Frame_mode_t_mode_rgb:
                 switch (param_.data_depth)
                   {
                   case 12:
@@ -133,7 +133,7 @@ i3ds::BaslerCamera::Open()
 		  camera_->BalanceWhiteAuto.SetValue(BalanceWhiteAuto_Continuous);
 
                 break;
-              case i3ds_asn1::mode_uyvy:
+              case i3ds_asn1::Frame_mode_t_mode_uyvy:
                   BOOST_LOG_TRIVIAL(info) << "Pixel format: YUV422";
                   camera_->PixelFormat.SetValue(Basler_GigECamera::PixelFormat_YUV422Packed);
 
@@ -193,7 +193,7 @@ i3ds::BaslerCamera::Open()
     {
       BOOST_LOG_TRIVIAL(warning) << e.what();
 
-      throw i3ds::CommandError(i3ds_asn1::error_other, "Error connecting to camera: " + std::string(e.what()));
+      throw i3ds::CommandError(i3ds_asn1::ResultCode_error_other, "Error connecting to camera: " + std::string(e.what()));
     }
 }
 
@@ -659,7 +659,7 @@ i3ds::BaslerCamera::set_error_state(const std::string &error_message, const bool
 
   if (!dont_throw)
     {
-      throw i3ds::CommandError(i3ds_asn1::error_other, error_message);
+      throw i3ds::CommandError(i3ds_asn1::ResultCode_error_other, error_message);
     }
 }
 
